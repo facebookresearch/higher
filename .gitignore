@@ -1,0 +1,10 @@
+__pycache__
+.vscode/*
+.noseids
+nosetests.xml
+.pytest_cache/*
+.mypy_cache/*
+*.png
+*.pdf
+*.gif
+*.tiff
