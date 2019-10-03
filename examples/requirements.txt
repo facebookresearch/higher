@@ -1,0 +1,5 @@
+higher>=0.0.1
+matplotlib
+pandas
+torch>=1.0.0
+torchvision
