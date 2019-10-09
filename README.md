@@ -8,7 +8,7 @@ Full documentation is available at https://higher.readthedocs.io/en/latest/.
 # Requirements and Installation
 
 * Python version >= 3.5
-* PyTorch version >= 1.2 (ideally >= v1.3, if using RNNs with CUDA)
+* PyTorch version >= 1.3
 
 To install `higher`:
 ```bash
