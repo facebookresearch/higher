@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 0.1.4
+-------------
+Fixes:
+- Differentiable optimizers now deal with models with frozen parameters appropriately.
+
 Version 0.1.3
 -------------
 Fixes:
