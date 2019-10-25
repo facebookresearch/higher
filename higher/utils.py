@@ -27,9 +27,9 @@ def _copy_tensor(
     device: _typing.Optional[_torch.device] = None
 ) -> _torch.Tensor:
     if safe_copy:
-        t = t.clone().detach().requires_grad_()
+        t = t.clone().detach().requires_grad_(t.requires_grad)
     else:
-        t = t.detach().requires_grad_()
+        t = t.detach().requires_grad_(t.requires_grad)
     t = t if device is None else t.to(device)
     return t
 

@@ -568,6 +568,48 @@ class TestOptim(unittest.TestCase):
                     "Nan or Inf found in hyperparameter gradients."
                 )
 
+    def testFrozenParameters(self):
+        """Check if diffopts robuts to frozen parameters.
+
+        Thanks to github user @seanie12 for providing the minimum working
+        example for this unit test.
+        """
+        class Net(nn.Module):
+            def __init__(self):
+                super(Net, self).__init__()
+                self.fc1 = nn.Linear(30, 50)
+                self.fc2 = nn.Linear(50, 1)
+                # freeze first FC layer
+                for param in self.fc1.parameters():
+                    param.requires_grad = False
+
+            def forward(self, x):
+                hidden = self.fc1(x)
+                logits = self.fc2(hidden).squeeze(1)
+                return logits
+
+        # random input and labels for debugging
+        inputs = torch.randn(16, 30)
+        ones = torch.ones(8)
+        zeros = torch.zeros(8)
+        labels = torch.cat([ones, zeros], dim=0)
+
+        net = Net()
+
+        param = filter(lambda x: x.requires_grad, net.parameters())
+        inner_opt = torch.optim.SGD(param, lr=1e-1)
+        loss_func = nn.BCEWithLogitsLoss()
+
+        with higher.innerloop_ctx(net, inner_opt) as (fnet, diffopt):
+            logits = fnet(inputs)
+            loss = loss_func(logits, labels)
+            diffopt.step(loss)
+            zipped = list(zip(net.parameters(), fnet.parameters()))
+            self.assertTrue(torch.equal(*zipped[0]))
+            self.assertTrue(torch.equal(*zipped[1]))
+            self.assertFalse(torch.equal(*zipped[2]))
+            self.assertFalse(torch.equal(*zipped[3]))
+
     def testGetApplyRoundTrip(self):
         kwargs = {}
         lr = .1
