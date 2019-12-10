@@ -8,10 +8,11 @@ to re-implement techniques that use unrolled gradients.
 does few-shot Omniglot classification with MAML.
 For more details see [the original MAML paper](https://arxiv.org/abs/1703.03400).
 
-## Structured Prediction Energy Networks (SPENs)
-[./spen-mnist.py](./spen-mnist.py)
-uses SPENs for for MNIST classification.
+## Deep Energy Models
+[./deep-energy-mnist.py](./deep-energy-mnist.py)
+uses SPENs/ICNNS for for MNIST classification.
 For more details see
-[The original SPEN paper](https://arxiv.org/abs/1511.06350)
+[The original SPEN paper](https://arxiv.org/abs/1511.06350),
+[End-to-End Learning for SPENs](https://arxiv.org/abs/1703.05667),
 and
-[End-to-End Learning for SPENs](https://arxiv.org/abs/1703.05667).
+[Input Convex Neural Networks](https://arxiv.org/abs/1609.07152).
