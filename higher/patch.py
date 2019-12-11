@@ -181,11 +181,13 @@ def _make_functional(
     class MonkeyPatched(_ModuleType, _MonkeyPatchBase):  # type: ignore
         _wrapped_name = type(module).__name__
 
-        def __init__(self) -> None:
+        def __init__(self, original_params) -> None:
             _torch.nn.Module.__init__(self)
 
             self._fast_params = None
             self._param_names = param_names
+
+            self._original_params = original_params
 
             # for pretty printing
             self._parameters = _OrderedDict(
@@ -244,14 +246,14 @@ def _make_functional(
                         object.__setattr__(self, name, value)
 
         def parameters(self) -> _typing.Iterable[_torch.Tensor]:
-            r"""This shoud only be used to check shape/dtype of original params.
+            r"""This should only be used to check shape/dtype of original params.
             """
-            return module.parameters()
+            return self._original_params
 
     MonkeyPatched.__name__ = "InnerFunctional" + type(module).__name__
     MonkeyPatched.__qualname__ = MonkeyPatched.__name__
 
-    fmodule = MonkeyPatched()
+    fmodule = MonkeyPatched(module.parameters())
 
     # use 1 as dummy list item since we are only counting
     num_params = len([1 for p in module._parameters.values() if p is not None])
