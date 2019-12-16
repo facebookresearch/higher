@@ -121,6 +121,7 @@ class DifferentiableOptimizer(_abc.ABC):
 
         self._fmodel = fmodel
         self._track_higher_grads = track_higher_grads
+        self._grads = None
 
     def _apply_override(self, override: _OverrideType) -> None:
         for k, v in override.items():
@@ -256,6 +257,7 @@ class DifferentiableSGD(DifferentiableOptimizer):
             dampening = group['dampening']
             nesterov = group['nesterov']
 
+            self._grads = []
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
                 if g is None:
                     continue
@@ -276,6 +278,8 @@ class DifferentiableSGD(DifferentiableOptimizer):
                         g = buf
 
                 group['params'][p_idx] = _add(p, -group['lr'], g)
+                self._grads.append(g)
+
 
 
 class DifferentiableAdam(DifferentiableOptimizer):
