@@ -30,7 +30,7 @@ _GroupedGradsType = _typing.List[_typing.List[_torch.Tensor]]
 _StateType = _typing.List[_typing.DefaultDict[int, _typing.Any]]
 _GradClosureType = _typing.Callable[[_torch.Tensor], _torch.Tensor]
 _OverrideType = _typing.Dict[str, _typing.List[_typing.Any]]
-
+_AddReturnType = _typing.Tuple[_torch.Tensor, _torch.Tensor]
 
 def _get_mask_closure(mask: _torch.Tensor) -> _GradClosureType:
     def closure(grad: _torch.Tensor) -> _torch.Tensor:
@@ -121,7 +121,7 @@ class DifferentiableOptimizer(_abc.ABC):
 
         self._fmodel = fmodel
         self._track_higher_grads = track_higher_grads
-        self._grads = None
+        self._grads, self._grads_postproc = None, None
 
     def _apply_override(self, override: _OverrideType) -> None:
         for k, v in override.items():
@@ -251,13 +251,13 @@ class DifferentiableSGD(DifferentiableOptimizer):
 
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             weight_decay = group['weight_decay']
             momentum = group['momentum']
             dampening = group['dampening']
             nesterov = group['nesterov']
 
-            self._grads = []
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
                 if g is None:
                     continue
@@ -277,8 +277,9 @@ class DifferentiableSGD(DifferentiableOptimizer):
                     else:
                         g = buf
 
-                group['params'][p_idx] = _add(p, -group['lr'], g)
+                group['params'][p_idx], g_postproc = _add_(p, -group['lr'], g)
                 self._grads.append(g)
+                self._grads_postproc.append(g_postproc)
 
 
 
@@ -290,11 +291,13 @@ class DifferentiableAdam(DifferentiableOptimizer):
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
 
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             amsgrad = group['amsgrad']
             beta1, beta2 = group['betas']
             weight_decay = group['weight_decay']
 
+            self._grads = []
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
 
                 if g is None:
@@ -349,9 +352,11 @@ class DifferentiableAdam(DifferentiableOptimizer):
                     / bias_correction1
                 )
 
-                group['params'][p_idx] = _addcdiv(
+                group['params'][p_idx], g_postproc = _addcdiv_(
                     p, -step_size, exp_avg, denom
                 )
+                self._grads.append(g)
+                self._grads_postproc.append(g_postproc)
 
 
 class DifferentiableAdadelta(DifferentiableOptimizer):
@@ -362,6 +367,7 @@ class DifferentiableAdadelta(DifferentiableOptimizer):
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
 
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             rho, eps = group['rho'], group['eps']
 
@@ -394,7 +400,9 @@ class DifferentiableAdadelta(DifferentiableOptimizer):
                 state['acc_delta'] = _addcmul(
                     acc_delta.mul(rho), 1 - rho, delta, delta
                 )
-                group['params'][p_idx] = _add(p, -group['lr'], delta)
+                group['params'][p_idx], g_postproc = _add_(p, -group['lr'], delta)
+                self._grads.append(g)
+                self._grads_postproc.append(g_postproc)
 
 
 class DifferentiableAdagrad(DifferentiableOptimizer):
@@ -405,6 +413,7 @@ class DifferentiableAdagrad(DifferentiableOptimizer):
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
 
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
                 if g is None:
@@ -437,7 +446,10 @@ class DifferentiableAdagrad(DifferentiableOptimizer):
                     mask = sum_ == 0.
                     _maybe_mask(sum_, mask)
                     std = _add(state['sum'].sqrt(), 1e-10)
-                    group['params'][p_idx] = _addcdiv(p, -clr, g, std)
+                    group['params'][p_idx], g_postproc = _addcdiv_(p, -clr, g, std)
+                
+                self._grads.append(g)
+                self._grads_postproc.append(g_postproc)
 
 
 class DifferentiableAdamax(DifferentiableOptimizer):
@@ -448,6 +460,7 @@ class DifferentiableAdamax(DifferentiableOptimizer):
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
 
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
                 if g is None:
@@ -490,7 +503,10 @@ class DifferentiableAdamax(DifferentiableOptimizer):
                 bias_correction = 1 - beta1**state['step']
                 clr = group['lr'] / bias_correction
 
-                group['params'][p_idx] = _addcdiv(p, -clr, exp_avg, exp_inf)
+                group['params'][p_idx], g_postproc = _addcdiv_(p, -clr, exp_avg, exp_inf)
+
+                self._grads.append(g)
+                self._grads_postproc.append(g_postproc)
 
 
 class DifferentiableASGD(DifferentiableOptimizer):
@@ -501,6 +517,7 @@ class DifferentiableASGD(DifferentiableOptimizer):
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
 
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
                 if g is None:
@@ -526,7 +543,7 @@ class DifferentiableASGD(DifferentiableOptimizer):
                 p = p.mul(1 - group['lambd'] * state['eta'])
 
                 # update parameter
-                group['params'][p_idx] = _add(p, -state['eta'], g)
+                group['params'][p_idx], g_postproc = _add_(p, -state['eta'], g)
 
                 # averaging
                 if state['mu'] != 1:
@@ -545,6 +562,10 @@ class DifferentiableASGD(DifferentiableOptimizer):
                     )
                 )
                 state['mu'] = 1 / max(1, state['step'] - group['t0'])
+                
+                self._grads.append(g)
+                self._grads_postproc.append(g_postproc)
+
 
 
 class DifferentiableRMSprop(DifferentiableOptimizer):
@@ -562,6 +583,7 @@ class DifferentiableRMSprop(DifferentiableOptimizer):
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
 
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
                 if g is None:
@@ -613,11 +635,14 @@ class DifferentiableRMSprop(DifferentiableOptimizer):
                     buf = state['momentum_buffer']
                     buf = _addcdiv(buf.mul(group['momentum']), g, avg)
                     state['momentum_buffer'] = buf
-                    p = _add(p, -group['lr'], buf)
+                    p, g_postproc = _add_(p, -group['lr'], buf)
                 else:
-                    p = _addcdiv(p, -group['lr'], g, avg)
+                    p, g_postproc = _addcdiv_(p, -group['lr'], g, avg)
 
                 group['params'][p_idx] = p
+
+                self._grads.append(g)
+                self._grads_postproc.append(g_postproc)
 
 
 class DifferentiableRprop(DifferentiableOptimizer):
@@ -637,6 +662,7 @@ class DifferentiableRprop(DifferentiableOptimizer):
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
 
         zipped = zip(self.param_groups, grouped_grads)
+        self._grads, self._grads_postproc = [], []
         for group_idx, (group, grads) in enumerate(zipped):
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
                 if g is None:
@@ -676,12 +702,15 @@ class DifferentiableRprop(DifferentiableOptimizer):
 
                 # for dir<0, dfdx=0
                 # for dir>=0 dfdx=dfdx
+                self._grads.append(g)
                 g = _torch.where(sign.eq(etaminus), _torch.zeros_like(g), g)
 
                 # update parameters
-                group['params'][p_idx] = _addcmul(p, -1, g.sign(), step_size)
+                group['params'][p_idx], g_postproc = _addcmul_(p, -1, g.sign(), step_size)
 
                 state['prev'] = g.clone()
+
+                self._grads_postproc.append(g_postproc)
 
 
 _OptMappingType = _typing.Dict[_torch.optim.Optimizer, _typing.
@@ -960,8 +989,8 @@ def _add(
     else:
         value = a1
         other = a2
-    return tensor + (value * other)
-
+    addv = (value * other)
+    return tensor + addv
 
 def _addcdiv(
     tensor: _torch.Tensor,
@@ -977,7 +1006,8 @@ def _addcdiv(
         value = a1
         tensor1 = a2
         tensor2 = a3
-    return tensor + value * (tensor1 / tensor2)
+    cdiv = value * (tensor1 / tensor2)
+    return tensor + cdiv
 
 
 def _addcmul(
@@ -994,7 +1024,59 @@ def _addcmul(
         value = a1
         tensor1 = a2
         tensor2 = a3
-    return tensor + (value * tensor1 * tensor2)
+    cmul = (value * tensor1 * tensor2)
+    return tensor + cmul
+
+
+def _add_(
+    tensor: _torch.Tensor,
+    a1: _typing.Union[float, int, _torch.Tensor],
+    a2: _typing.Optional[_torch.Tensor] = None
+) -> _AddReturnType:
+    if a2 is None:
+        value: _typing.Union[_torch.Tensor, float] = 1.
+        other = a1
+    else:
+        value = a1
+        other = a2
+    addv = (value * other)
+    return tensor + addv, addv
+
+def _addcdiv_(
+    tensor: _torch.Tensor,
+    a1: _typing.Union[float, int, _torch.Tensor],
+    a2: _torch.Tensor,
+    a3: _typing.Optional[_torch.Tensor] = None
+) -> _AddReturnType:
+    if a3 is None:
+        value: _typing.Union[_torch.Tensor, float] = 1.
+        tensor1 = a1
+        tensor2 = a2
+    else:
+        value = a1
+        tensor1 = a2
+        tensor2 = a3
+    cdiv = value * (tensor1 / tensor2)
+    return tensor + cdiv, cdiv
+
+
+def _addcmul_(
+    tensor: _torch.Tensor,
+    a1: _typing.Union[float, int, _torch.Tensor],
+    a2: _torch.Tensor,
+    a3: _typing.Optional[_torch.Tensor] = None
+) -> _AddReturnType:
+    if a3 is None:
+        value: _typing.Union[_torch.Tensor, float] = 1.
+        tensor1 = a1
+        tensor2 = a2
+    else:
+        value = a1
+        tensor1 = a2
+        tensor2 = a3
+    cmul = (value * tensor1 * tensor2)
+    return tensor + cmul, cmul
+
 
 
 # TODO(egrefen): this probably could be refactored into utils
