@@ -282,7 +282,6 @@ class DifferentiableSGD(DifferentiableOptimizer):
                 self._grads_postproc.append(g_postproc)
 
 
-
 class DifferentiableAdam(DifferentiableOptimizer):
     r"""A differentiable version of the Adam optimizer.
 
@@ -297,7 +296,6 @@ class DifferentiableAdam(DifferentiableOptimizer):
             beta1, beta2 = group['betas']
             weight_decay = group['weight_decay']
 
-            self._grads = []
             for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
 
                 if g is None:
