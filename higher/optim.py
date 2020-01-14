@@ -121,7 +121,7 @@ class DifferentiableOptimizer(_abc.ABC):
 
         self._fmodel = fmodel
         self._track_higher_grads = track_higher_grads
-        self._grads, self._grads_postproc = None, None
+        self._grads, self._grads_postproc, self._grads_preproc = None, None, None
 
     def _apply_override(self, override: _OverrideType) -> None:
         for k, v in override.items():
@@ -213,6 +213,8 @@ class DifferentiableOptimizer(_abc.ABC):
             create_graph=self._track_higher_grads,
             allow_unused=True  # boo
         )
+
+        self._grads_preproc = [grad.clone() for grad in all_grads]
 
         grouped_grads = []
         for group, mapping in zip(self.param_groups, self._group_to_param_list):
