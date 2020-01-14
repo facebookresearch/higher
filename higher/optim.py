@@ -30,6 +30,8 @@ _GroupedGradsType = _typing.List[_typing.List[_torch.Tensor]]
 _StateType = _typing.List[_typing.DefaultDict[int, _typing.Any]]
 _GradClosureType = _typing.Callable[[_torch.Tensor], _torch.Tensor]
 _OverrideType = _typing.Dict[str, _typing.List[_typing.Any]]
+_GradCallbackType = _typing.Callable[[_typing.List[_torch.Tensor]],
+                                      _typing.List[_torch.Tensor]]
 
 
 def _get_mask_closure(mask: _torch.Tensor) -> _GradClosureType:
@@ -54,6 +56,7 @@ class DifferentiableOptimizer(_abc.ABC):
         fmodel: _typing.Optional[_patch._MonkeyPatchBase] = None,
         device: _typing.Optional[_torch.device] = None,
         override: _typing.Optional[_OverrideType] = None,
+        grad_callback: _typing.Optional[_GradCallbackType] = None,
         track_higher_grads: bool = True,
         **kwargs
     ) -> None:
@@ -76,6 +79,13 @@ class DifferentiableOptimizer(_abc.ABC):
                 corresponding setting in the ``i``\ th parameter group. This permits
                 the passing of tensors requiring gradient to differentiable
                 optimizers for use as optimizer settings.
+            grad_callback: (optional) a single argument function which will be
+                applied to a list of gradients of parameters, which respects the
+                order specified by ``reference_params``. This can be used to
+                apply a function, such as gradient clipping, to all (or a
+                subset) of these gradients every time the step function is
+                called. If this keyword argument is provided when calling the
+                step method, its value will override the default specified here.
             track_higher_grads: if True, during unrolled optimization the graph
                 be retained, and the fast weights will bear grad funcs, so as to
                 permit backpropagation through the optimization process. Setting
@@ -98,6 +108,8 @@ class DifferentiableOptimizer(_abc.ABC):
         # Deal with override
         if override is not None:
             self._apply_override(override)
+
+        self._grad_callback = grad_callback
 
         # Copy and cast state
         zipped = zip(self.param_groups, other.param_groups)
@@ -139,6 +151,7 @@ class DifferentiableOptimizer(_abc.ABC):
         loss: _torch.Tensor,
         params: _typing.Iterable[_torch.Tensor] = None,
         override: _typing.Optional[_OverrideType] = None,
+        grad_callback: _typing.Optional[_GradCallbackType] = None,
         **kwargs
     ) -> _typing.Iterable[_torch.Tensor]:
         r"""Perform a model update.
@@ -168,17 +181,25 @@ class DifferentiableOptimizer(_abc.ABC):
                 override values, or to a list of override values of length equal
                 to the number of parameter groups. If a single override is
                 provided for a keyword, it is used for all parameter groups. If
-                a list is provided, the ``i``\ th element of the list overrides the
-                corresponding setting in the ``i``\ th parameter group. This permits
-                the passing of tensors requiring gradient to differentiable
-                optimizers for use as optimizer settings. Setting override here
-                has highest precedence, i.e. it will override any tensors
-                provided as override during the creation of the differentiable
-                optimizer, where there is name clash.
+                a list is provided, the ``i``\ th element of the list overrides
+                the corresponding setting in the ``i``\ th parameter group. This
+                permits the passing of tensors requiring gradient to
+                differentiable optimizers for use as optimizer settings. Setting
+                override here has highest precedence, i.e. it will override any
+                tensors provided as override during the creation of the
+                differentiable optimizer, where there is name clash.
+            grad_callback: (optional) a single argument function which will be
+                applied to a list of gradients of parameters, which respects the
+                order specified by ``reference_params``. This can be used to
+                apply a function, such as gradient clipping, to all (or a
+                subset) of these gradients every time the step function is
+                called. This callback overrides the default provided when
+                constructing the differentiable optimizer.
+
 
         Returns:
-            The updated parameters, which will individually have ``grad_fn``\ s of
-            their own. If the optimizer has an encapsulated patched model,
+            The updated parameters, which will individually have ``grad_fn``\ s
+            of their own. If the optimizer has an encapsulated patched model,
             its view over its own fast weights will be updated with these
             params.
         """
@@ -211,6 +232,11 @@ class DifferentiableOptimizer(_abc.ABC):
             create_graph=self._track_higher_grads,
             allow_unused=True  # boo
         )
+
+        if grad_callback is not None:
+            all_grads = grad_callback(all_grads)
+        elif self._grad_callback is not None:
+            all_grads = self._grad_callback(all_grads)
 
         grouped_grads = []
         for group, mapping in zip(self.param_groups, self._group_to_param_list):

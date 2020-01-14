@@ -443,7 +443,7 @@ class TestOptim(unittest.TestCase):
         )
 
     @parameterized.expand([(
-        "simple_model_sgd",
+        "simple_model_adam",
         lambda self: self._model,
         optim.Adam,
     )])
@@ -505,8 +505,109 @@ class TestOptim(unittest.TestCase):
                     "Nan or Inf found in hyperparameter gradients."
                 )
 
+    @staticmethod
+    def _approx_equal_params(params_1, params_2):
+        params_1 = list(params_1)
+        params_2 = list(params_2)
+        if len(params_1) != len(params_2):
+            return False
+        for p1, p2 in zip(params_1, params_2):
+            if not torch.allclose(p1, p2):
+                return False
+        return True
+
     @parameterized.expand([(
-        "simple_model_sgd",
+        "simple_model_adam",
+        lambda self: self._model,
+        optim.Adam,
+    )])
+    def testDiffOptCallback(
+        self, _, model_builder, opt_builder, kwargs=None
+    ):
+        kwargs = {} if kwargs is None else kwargs
+        lr = .1
+        left_lr = .2
+        model = model_builder(self)
+
+        full_parameters = list(model.parameters())
+        half = len(full_parameters) // 2
+        left_parameters = full_parameters[:half]
+        right_parameters = full_parameters[half:]
+        param_groups = [
+            {
+                'params': left_parameters,
+                'lr': left_lr
+            },
+            {
+                'params': right_parameters
+            },
+        ]
+        opt = opt_builder(param_groups, lr=lr, **kwargs)
+
+        # We should have the following equalities/inequalities for the patched
+        # models defined below at the end of training:
+        # fmodel_0 != fmodel_1 != fmodel_2
+        # fmodel_1 != fmodel_2
+        # fmodel_2 == fmodel_3
+
+        callback_1 = lambda all_grad: [g * .1 for g in all_grad]
+        callback_2 = lambda all_grad: [g * .2 for g in all_grad]
+        callback_3 = callback_2
+
+        for i in range(1):
+            fmodel_0 = higher.patch.monkeypatch(model)
+            diffopt_0 = higher.optim.get_diff_optim(
+                opt, model.parameters(), fmodel_0, grad_callback=None
+            )
+
+            fmodel_1 = higher.patch.monkeypatch(model)
+            diffopt_1 = higher.optim.get_diff_optim(
+                opt, model.parameters(), fmodel_1, grad_callback=callback_1
+            )
+
+            fmodel_2 = higher.patch.monkeypatch(model)
+            diffopt_2 = higher.optim.get_diff_optim(
+                opt, model.parameters(), fmodel_2, grad_callback=callback_2
+            )
+
+            fmodel_3 = higher.patch.monkeypatch(model)
+            diffopt_3 = higher.optim.get_diff_optim(
+                opt, model.parameters(), fmodel_3, grad_callback=None
+            )
+
+            for j in range(3):
+                x = torch.rand(10, 4)
+                diffopt_0.step(fmodel_0(x).pow(2).sum())
+                diffopt_1.step(fmodel_1(x).pow(2).sum())
+                diffopt_2.step(fmodel_2(x).pow(2).sum())
+                diffopt_3.step(
+                    fmodel_3(x).pow(2).sum(), grad_callback=callback_3
+                )
+
+            # Check that the conditions described at top of loop are satisfied
+            self.assertFalse(
+                self._approx_equal_params(
+                    fmodel_0.parameters(), fmodel_1.parameters()
+                )
+            )
+            self.assertFalse(
+                self._approx_equal_params(
+                    fmodel_0.parameters(), fmodel_2.parameters()
+                )
+            )
+            self.assertFalse(
+                self._approx_equal_params(
+                    fmodel_1.parameters(), fmodel_2.parameters()
+                )
+            )
+            self.assertTrue(
+                self._approx_equal_params(
+                    fmodel_2.parameters(), fmodel_3.parameters()
+                )
+            )
+
+    @parameterized.expand([(
+        "simple_model_adam",
         lambda self: self._model,
         optim.Adam,
     )])
