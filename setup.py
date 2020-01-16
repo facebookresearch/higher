@@ -20,7 +20,7 @@ setup(
     name='higher',
     author='Edward Grefenstette',
     author_email='egrefen@fb.com',
-    version='0.1.4',
+    version='0.1.5',
     keywords='second-order, gradient descent, optimization, meta-learning',
     packages=['higher'],
     install_requires=['torch'],

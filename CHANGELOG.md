@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 0.1.5
+-------------
+New:
+- `DifferentiableOptimizer` instances take a `grad_callback` kwarg at creation and/or when `step` is called, which allows users to specify a callable which will be called on the list of gradients w.r.t. the model parameters tracked by the optimizer, so as to permit transformations of such gradients. Users are responsible for ensuring that such transformations do not change the shape/order of gradients or prevent the formation of second-order gradients.
+
+Fixes:
+- Removed a memory leak due to refcount cycle in `MonkeyPatched` classes.
+
 Version 0.1.4
 -------------
 Fixes:
