@@ -130,8 +130,8 @@ It is possible to use optimizers other that those found in `torch.optim`. A diff
     zipped = zip(self.param_groups, grouped_grads)
     for group_idx, (group, grads) in enumerate(zipped):
         for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
-        if g is None:
-            continue
+          if g is None:
+              continue
     ```
 3. Replace `state = self.state[p]` with `state = self.state[group_idx][p_idx]`.
 4. Replace any in-place op with a non in-place op, e.g. `t.add_(a, x).mul_(y)` should become `t = t.add(a, x).mul(y)` (note the assignment). Be careful to also track where dictionaries are being implicitly updated by such ops, e.g. if there is code of the form:
