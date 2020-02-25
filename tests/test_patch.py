@@ -29,6 +29,11 @@ _test_sweep = [
     ("batchnorm_mlp", lambda self: self._batchnorm_mlp),
 ]
 
+_rnn_test_sweep = [
+    ("simple_rnn", nn.RNN),
+    ("lstm", nn.LSTM),
+    ("gru", nn.GRU),
+]
 
 class _NestedEnc(torch.nn.Module):
     def __init__(self, f):
@@ -164,7 +169,8 @@ class TestPatch(unittest.TestCase):
         for grad in final_grads:
             self.assertIsNotNone(grad)
 
-    def testRNN(self):
+    @parameterized.expand(_rnn_test_sweep)
+    def testRNNForward(self, _, rnn_constructor):
         num_layers = 2
         hidden_size = 20
         num_feats = 10
@@ -174,21 +180,31 @@ class TestPatch(unittest.TestCase):
 
         for _ in range(5):
 
-            rnn = torch.nn.LSTM(num_feats, hidden_size, num_layers)
+            rnn = rnn_constructor(num_feats, hidden_size, num_layers)
             frnn = higher.patch.monkeypatch(rnn)
+
+            _, dummy_next = rnn(torch.rand(1, batch_size, num_feats))
 
             for _ in range(10):
 
-                input = torch.randn(seq_length, batch_size, num_feats)
-                h0 = torch.randn(num_layers, batch_size, hidden_size)
-                c0 = torch.randn(num_layers, batch_size, hidden_size)
+                inputs = torch.randn(seq_length, batch_size, num_feats)
+                if isinstance(dummy_next, tuple):
+                    start_state = tuple(
+                        torch.randn_like(o) for o in dummy_next
+                    )
+                else:
+                    start_state = torch.randn_like(dummy_next)
 
-                output, (hn, cn) = rnn(input, (h0, c0))
-                foutput, (fhn, fcn) = frnn(input, (h0, c0))
+                output, state = rnn(inputs, start_state)
+                foutput, fstate = frnn(inputs, start_state)
 
-                torch.testing.assert_allclose(output, foutput),
-                torch.testing.assert_allclose(hn, fhn),
-                torch.testing.assert_allclose(cn, fcn)
+                torch.testing.assert_allclose(output, foutput)
+                if isinstance(state, tuple):
+                    self.assertEqual(len(state), len(fstate))
+                    for s, fs in zip(state, fstate):
+                        torch.testing.assert_allclose(s, fs)
+                else:
+                    torch.testing.assert_allclose(state, fstate)
 
     @parameterized.expand(_test_sweep)
     def testMiniMAML(self, _, model_builder):
