@@ -204,6 +204,36 @@ class TestPatch(unittest.TestCase):
                 else:
                     torch.testing.assert_allclose(state, fstate)
 
+    @parameterized.expand(_rnn_cell_test_sweep)
+    def testRNNCellForward(self, _, rnn_constructor):
+        num_layers = 2
+        hidden_size = 20
+        num_feats = 10
+
+        batch_size = 3
+        seq_length = 5
+
+        for _ in range(5):
+
+            cell = rnn_constructor(num_feats, hidden_size, num_layers)
+            fcell = higher.patch.monkeypatch(cell)
+
+            state = fstate = None
+
+            for _ in range(10):
+                for _ in range(seq_length):
+                    inputs = torch.randn(batch_size, num_feats)
+
+                    state = cell(inputs, state)
+                    fstate = fcell(inputs, fstate)
+
+                    if isinstance(state, tuple):
+                        self.assertEqual(len(state), len(fstate))
+                        for s, fs in zip(state, fstate):
+                            torch.testing.assert_allclose(s, fs)
+                    else:
+                        torch.testing.assert_allclose(state, fstate)
+
     @parameterized.expand(_test_sweep)
     def testMiniMAML(self, _, model_builder):
         model = model_builder(self)
