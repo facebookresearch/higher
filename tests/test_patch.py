@@ -122,8 +122,8 @@ class TestPatch(unittest.TestCase):
         fmodel = higher.patch.monkeypatch(model)
         for _ in range(10):
             inputs = torch.rand(8, 4)
-            ref_loss = model(inputs).pow(2).sum()
-            loss = fmodel(inputs).pow(2).sum()
+            ref_loss = model(inputs).sum().pow(2)
+            loss = fmodel(inputs).sum().pow(2)
             ref_loss.backward()
             loss.backward()
             for true_param, got_param in zip(
@@ -144,7 +144,7 @@ class TestPatch(unittest.TestCase):
         fmodel = higher.patch.monkeypatch(model)
         for _ in range(10):
             inputs = torch.rand(8, 4)
-            loss = fmodel(inputs).pow(2).sum()
+            loss = fmodel(inputs).sum().pow(2)
             grads = torch.autograd.grad(
                 loss, fmodel.parameters(), allow_unused=True, create_graph=True
             )
@@ -165,7 +165,7 @@ class TestPatch(unittest.TestCase):
         with higher.innerloop_ctx(model, opt) as (fmodel, diffopt):
             for _ in range(10):
                 inputs = torch.rand(8, 4)
-                loss = fmodel(inputs).pow(2).sum()
+                loss = fmodel(inputs).sum().pow(2)
                 diffopt.step(loss)
             param_sum = sum(p.sum() for p in fmodel.parameters())
             final_grads = torch.autograd.grad(
@@ -249,7 +249,7 @@ class TestPatch(unittest.TestCase):
         for _ in range(10):
             inputs = torch.randn(seq_length, batch_size, num_feats)
             outputs, _ = frnn(inputs)
-            loss = outputs[-1].pow(2).sum()
+            loss = outputs[-1].sum().pow(2)
             grads = torch.autograd.grad(
                 loss, frnn.parameters(), allow_unused=True, create_graph=True
             )
@@ -284,7 +284,7 @@ class TestPatch(unittest.TestCase):
                 output = state[0]
             else:
                 output = state
-            loss = output.pow(2).sum()
+            loss = output.sum().pow(2)
             grads = torch.autograd.grad(
                 loss, fcell.parameters(), allow_unused=True, create_graph=True
             )
@@ -306,7 +306,7 @@ class TestPatch(unittest.TestCase):
         with higher.innerloop_ctx(model, opt, **ctx_opts) as (fmodel, diffopt):
             for _ in range(10):
                 inputs = torch.rand(8, 4)
-                loss = fmodel(inputs).pow(2).sum()
+                loss = fmodel(inputs).sum().pow(2)
                 diffopt.step(loss)
             param_sum = sum(p.sum() for p in fmodel.parameters())
             final_grads = torch.autograd.grad(
@@ -325,7 +325,7 @@ class TestPatch(unittest.TestCase):
         with higher.innerloop_ctx(model, opt, **ctx_opts) as (fmodel, diffopt):
             for _ in range(10):
                 inputs = torch.rand(8, 4)
-                loss = fmodel(inputs).pow(2).sum()
+                loss = fmodel(inputs).sum().pow(2)
                 diffopt.step(loss)
             param_sum = sum(p.sum() for p in fmodel.parameters())
             final_grads = torch.autograd.grad(
