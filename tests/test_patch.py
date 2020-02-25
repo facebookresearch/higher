@@ -205,7 +205,7 @@ class TestPatch(unittest.TestCase):
                     torch.testing.assert_allclose(state, fstate)
 
     @parameterized.expand(_rnn_cell_test_sweep)
-    def testRNNCellForward(self, _, rnn_constructor):
+    def testRNNCellForward(self, _, cell_constructor):
         num_layers = 2
         hidden_size = 20
         num_feats = 10
@@ -215,7 +215,7 @@ class TestPatch(unittest.TestCase):
 
         for _ in range(5):
 
-            cell = rnn_constructor(num_feats, hidden_size, num_layers)
+            cell = cell_constructor(num_feats, hidden_size, num_layers)
             fcell = higher.patch.monkeypatch(cell)
 
             state = fstate = None
@@ -233,6 +233,69 @@ class TestPatch(unittest.TestCase):
                             torch.testing.assert_allclose(s, fs)
                     else:
                         torch.testing.assert_allclose(state, fstate)
+
+    @parameterized.expand(_rnn_test_sweep)
+    def testRNNUnrollSGD(self, _, rnn_constructor):
+        num_layers = 2
+        hidden_size = 20
+        num_feats = 10
+
+        batch_size = 3
+        seq_length = 5
+
+        rnn = rnn_constructor(num_feats, hidden_size, num_layers)
+        frnn = higher.patch.monkeypatch(rnn)
+
+        for _ in range(10):
+            inputs = torch.randn(seq_length, batch_size, num_feats)
+            outputs, _ = frnn(inputs)
+            loss = outputs[-1].pow(2).sum()
+            grads = torch.autograd.grad(
+                loss, frnn.parameters(), allow_unused=True, create_graph=True
+            )
+            frnn.fast_params = [
+                p - self.lr * g if g is not None else p
+                for p, g in zip(frnn.parameters(), grads)
+            ]
+        param_sum = sum(p.sum() for p in frnn.parameters())
+        final_grads = torch.autograd.grad(param_sum, frnn.parameters(time=0))
+        for grad in final_grads:
+            self.assertIsNotNone(grad)
+
+    @parameterized.expand(_rnn_cell_test_sweep)
+    def testRNNCellUnrollSGD(self, _, cell_constructor):
+        num_layers = 2
+        hidden_size = 20
+        num_feats = 10
+
+        batch_size = 3
+        seq_length = 5
+
+        cell = cell_constructor(num_feats, hidden_size, num_layers)
+        fcell = higher.patch.monkeypatch(cell)
+
+        for _ in range(10):
+            state = None
+            for _ in range(seq_length):
+                inputs = torch.randn(batch_size, num_feats)
+                state = fcell(inputs, state)
+
+            if isinstance(state, tuple):
+                output = state[0]
+            else:
+                output = state
+            loss = output.pow(2).sum()
+            grads = torch.autograd.grad(
+                loss, fcell.parameters(), allow_unused=True, create_graph=True
+            )
+            fcell.fast_params = [
+                p - self.lr * g if g is not None else p
+                for p, g in zip(fcell.parameters(), grads)
+            ]
+        param_sum = sum(p.sum() for p in fcell.parameters())
+        final_grads = torch.autograd.grad(param_sum, fcell.parameters(time=0))
+        for grad in final_grads:
+            self.assertIsNotNone(grad)
 
     @parameterized.expand(_test_sweep)
     def testMiniMAML(self, _, model_builder):
