@@ -35,6 +35,12 @@ _rnn_test_sweep = [
     ("gru", nn.GRU),
 ]
 
+_rnn_cell_test_sweep = [
+    ("simple_rnn", nn.RNNCell),
+    ("lstm", nn.LSTMCell),
+    ("gru", nn.GRUCell),
+]
+
 class _NestedEnc(torch.nn.Module):
     def __init__(self, f):
         super().__init__()
@@ -183,20 +189,12 @@ class TestPatch(unittest.TestCase):
             rnn = rnn_constructor(num_feats, hidden_size, num_layers)
             frnn = higher.patch.monkeypatch(rnn)
 
-            _, dummy_next = rnn(torch.rand(1, batch_size, num_feats))
-
             for _ in range(10):
 
                 inputs = torch.randn(seq_length, batch_size, num_feats)
-                if isinstance(dummy_next, tuple):
-                    start_state = tuple(
-                        torch.randn_like(o) for o in dummy_next
-                    )
-                else:
-                    start_state = torch.randn_like(dummy_next)
 
-                output, state = rnn(inputs, start_state)
-                foutput, fstate = frnn(inputs, start_state)
+                output, state = rnn(inputs)
+                foutput, fstate = frnn(inputs)
 
                 torch.testing.assert_allclose(output, foutput)
                 if isinstance(state, tuple):
