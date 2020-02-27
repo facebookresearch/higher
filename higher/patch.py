@@ -245,11 +245,6 @@ def _make_functional(
                     else:
                         object.__setattr__(self, name, value)
 
-        def parameters(self) -> _typing.Iterable[_torch.Tensor]:
-            r"""This should only be used to check shape/dtype of original params.
-            """
-            return self._original_params
-
     MonkeyPatched.__name__ = "InnerFunctional" + type(module).__name__
     MonkeyPatched.__qualname__ = MonkeyPatched.__name__
 
@@ -287,9 +282,23 @@ def _make_functional(
             params_box[0][params_offset:params_offset + num_params]
         ):
             setattr(self, name, param)
+
+        # This snippet deals with torch.nn.{RNN,GRU,LSTM}
+        if hasattr(self, "_flat_weights_names"):
+            self._flat_weights = [
+                self._parameters[wn] for wn in self._flat_weights_names
+            ]
+
         return true_forward(self, *args, **kwargs)
 
     setattr(MonkeyPatched, "forward", patched_forward)
+
+    def flatten_parameters(self):
+        return  # no-op
+
+    # This (hopefully) avoids trouble on GPU with torch.nn.{RNN,GRU,LSTM}
+    if hasattr(module, "flatten_parameters"):
+        setattr(MonkeyPatched, "flatten_parameters", flatten_parameters)
 
     return child_params_offset, fmodule, type(fmodule)
 
