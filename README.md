@@ -158,6 +158,7 @@ See the [changelog](./CHANGELOG.md) for release notes.
 
 # Known/Possible Issues
 * See the [issues tracker](https://github.com/facebookresearch/higher/issues) for an up-to-date list.
+* No support (or planned support) for `torch.nn.DataParallel` at this time. This would require a rewrite of `DataParallel`. Please raise an issue on the pytorch issue tracker if this matters to you.
 * Some of the adaptative gradient-style differentiable optimizers may be unstable and yield NaNs when taking higher order gradients. Some tricks have been used to mitigate this risk. Please raise an issue if these are not sufficient in practice.
 * Second-order gradients may not work with some CUDNN modules (mostly RNNs). From PyTorch v1.3 onwards, wrapping the code where models are used with `higher` using the following context manager should solve the issue:
 ```python
