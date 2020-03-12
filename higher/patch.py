@@ -16,7 +16,9 @@
 
 import abc as _abc
 from collections import OrderedDict as _OrderedDict
+from contextlib import contextmanager as _contextmanager
 import typing as _typing
+import weakref as _weakref
 import warnings as _warnings
 
 import torch as _torch
@@ -34,6 +36,13 @@ _internal_attrs = {
 }
 
 _BufferType = _typing.Dict[str, _typing.Optional[_torch.Tensor]]
+
+
+@_contextmanager
+def _modify_internally(fmodule):
+    fmodule._being_modifed_internally = True
+    yield
+    fmodule._being_modifed_internally = False
 
 
 def _patched_parameters(
@@ -78,6 +87,7 @@ class _MonkeyPatchBase(_abc.ABC, _torch.nn.Module):
     @_abc.abstractmethod
     def __init__(self) -> None:
         self._param_mapping: _typing.List[int] = []
+        self._being_modifed_internally = True
 
     def forward(self):
         raise NotImplementedError(
@@ -159,7 +169,8 @@ _ParameterPlaceholder.__qualname__ = "ParameterPlaceholder"
 def _make_functional(
     module: _torch.nn.Module,
     params_box: _typing.Sequence[_typing.Optional[_typing.List[_torch.Tensor]]],
-    params_offset: int
+    params_offset: int,
+    root_patched: _typing.Optional[_MonkeyPatchBase] = None,
 ) -> _typing.Tuple[int, _MonkeyPatchBase, _typing.Type[_MonkeyPatchBase]]:
 
     if isinstance(module, _MonkeyPatchBase):
@@ -181,8 +192,9 @@ def _make_functional(
     class MonkeyPatched(_ModuleType, _MonkeyPatchBase):  # type: ignore
         _wrapped_name = type(module).__name__
 
-        def __init__(self, original_params) -> None:
+        def __init__(self, original_params, root) -> None:
             _torch.nn.Module.__init__(self)
+            self._root_ref = _weakref.ref(root) if root else None
 
             self._fast_params = None
             self._param_names = param_names
@@ -207,6 +219,29 @@ def _make_functional(
                 if not isinstance(value, _torch.Tensor):
                     raise TypeError("Require Tensor as fast weights. "
                                     "Got {}".format(_torch.typename(value)))
+
+                if not self._being_modifed_internally:
+                    # Additional behaviour for when fast weights are being
+                    # directly modified goes here:
+                    if not self._root_ref:
+                        root = self
+                    else:
+                        root = self._root_ref()
+
+                    old_value = self._parameters[name]
+                    fast_params = root.fast_params[:]
+                    if not fast_params:
+                        raise Exception(
+                            "Cannot assign parameters to patched module which "
+                            "does not have implicit fast parameters."
+                        )
+                    replacement_index = _utils._find_param_in_list(
+                        old_value, fast_params
+                    )
+                    fast_params[replacement_index] = value
+                    self.update_params(fast_params)
+
+
                 # Change parameters in place, usually during boxed_forward pass
                 self._parameters[name] = value
             else:
@@ -248,7 +283,11 @@ def _make_functional(
     MonkeyPatched.__name__ = "InnerFunctional" + type(module).__name__
     MonkeyPatched.__qualname__ = MonkeyPatched.__name__
 
-    fmodule = MonkeyPatched(module.parameters())
+    fmodule = MonkeyPatched(module.parameters(), root=root_patched)
+
+    # If a root module hasn't been defined yet, this fmodule is the root
+    if not root_patched:
+        root_patched = fmodule
 
     # use 1 as dummy list item since we are only counting
     num_params = len([1 for p in module._parameters.values() if p is not None])
@@ -260,16 +299,17 @@ def _make_functional(
         setattr(fmodule, name, attr)
 
     # Deal with "None"-style params
-    for name, attr in module.__dict__['_parameters'].items():
-        if isinstance(attr, _torch.nn.Parameter):
-            continue
-        else:
-            setattr(fmodule, name, attr)
+    with _modify_internally(fmodule):
+        for name, attr in module.__dict__['_parameters'].items():
+            if isinstance(attr, _torch.nn.Parameter):
+                continue
+            else:
+                setattr(fmodule, name, attr)
 
     child_params_offset = params_offset + num_params
     for name, child in module._modules.items():
         child_params_offset, fchild, _ = _make_functional(
-            child, params_box, child_params_offset
+            child, params_box, child_params_offset, root_patched
         )
         fmodule._modules[name] = fchild
         setattr(fmodule, name, fchild)
@@ -277,17 +317,18 @@ def _make_functional(
     true_forward = type(module).forward
 
     def patched_forward(self, *args, **kwargs):
-        for name, param in zip(
-            self._param_names,
-            params_box[0][params_offset:params_offset + num_params]
-        ):
-            setattr(self, name, param)
+        with _modify_internally(self):
+            for name, param in zip(
+                self._param_names,
+                params_box[0][params_offset:params_offset + num_params]
+            ):
+                setattr(self, name, param)
 
-        # This snippet deals with torch.nn.{RNN,GRU,LSTM}
-        if hasattr(self, "_flat_weights_names"):
-            self._flat_weights = [
-                self._parameters[wn] for wn in self._flat_weights_names
-            ]
+            # This snippet deals with torch.nn.{RNN,GRU,LSTM}
+            if hasattr(self, "_flat_weights_names"):
+                self._flat_weights = [
+                    self._parameters[wn] for wn in self._flat_weights_names
+                ]
 
         return true_forward(self, *args, **kwargs)
 
@@ -314,11 +355,13 @@ def _update_patched_params(
         child_params_offset = _update_patched_params(
             child, params_box, child_params_offset
         )
-    for name, param in zip(
-        fmodule._param_names,
-        params_box[0][params_offset:params_offset + num_params]
-    ):
-        setattr(fmodule, name, param)
+
+    with _modify_internally(fmodule):
+        for name, param in zip(
+            fmodule._param_names,
+            params_box[0][params_offset:params_offset + num_params]
+        ):
+            setattr(fmodule, name, param)
     return child_params_offset
 
 
