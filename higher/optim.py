@@ -955,7 +955,7 @@ def apply_trainable_opt_params(
     """
     for k, v in override.items():
         # Sanity check
-        if (len(v) is not 1) and (len(v) is not len(opt.param_groups)):
+        if (len(v) != 1) and (len(v) != len(opt.param_groups)):
             raise ValueError(
                 "Mismatch between the number of override tensors for "
                 "optimizer parameter {} and the number of "
