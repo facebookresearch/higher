@@ -455,7 +455,7 @@ class DifferentiableAdagrad(DifferentiableOptimizer):
                     state['sum'] = sum_ = _addcmul(state['sum'], 1, g, g)
                     mask = sum_ == 0.
                     _maybe_mask(sum_, mask)
-                    std = _add(state['sum'].sqrt(), group['eps'])
+                    std = _add(state['sum'].sqrt(), group['eps'] if 'eps' in group else 1e-10)
                     group['params'][p_idx] = _addcdiv(p, -clr, g, std)
 
 
