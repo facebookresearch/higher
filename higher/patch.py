@@ -397,8 +397,15 @@ def make_functional(
                 "tracking its own fast parameters"
             )
 
+        # Copy fast parameters into params_box for use in boxed_forward
         params_box[0] = self._expand_params(self.fast_params)
-        return self.boxed_forward(*args, **kwargs)
+
+        output = self.boxed_forward(*args, **kwargs)
+        
+        # Clean up
+        params_box[0] = None
+        
+        return output
 
     def _update_params(self, params):
         self.fast_params = params
