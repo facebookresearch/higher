@@ -348,6 +348,23 @@ class TestPatch(unittest.TestCase):
                 self.assertIsNone(p.grad)
                 self.assertIsNone(g)
 
+    def testSubModuleDirectCall(self):
+        """Check that patched submodules can be called directly."""
+        class Module(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.submodule = nn.Linear(3, 4)
+
+            def forward(self, inputs):
+                return self.submodule(inputs)
+
+        module = _NestedEnc(nn.Linear(3, 4))
+        fmodule = higher.monkeypatch(module)
+
+        xs = torch.randn(2, 3)
+        fsubmodule = fmodule.f
+
+        self.assertTrue(torch.equal(fmodule(xs), fsubmodule(xs)))
 
 if __name__ == '__main__':
     unittest.main()
