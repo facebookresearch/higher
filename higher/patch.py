@@ -208,6 +208,21 @@ def _make_functional(
             )
             self._modules: _typing.Dict[str, _MonkeyPatchBase] = _OrderedDict()
 
+        @property
+        def direct_submodule_call(self):
+            return params_box[0] is None
+
+        @property
+        def is_root(self):
+            return self._root_ref is None
+
+        @property
+        def root(self):
+            if self.is_root:
+                return self
+            else:
+                return self._root_ref()
+
         def __setattr__(self, name, value):
             def remove_from(*dicts):
                 for d in dicts:
@@ -223,13 +238,8 @@ def _make_functional(
                 if not self._being_modifed_internally:
                     # Additional behaviour for when fast weights are being
                     # directly modified goes here:
-                    if not self._root_ref:
-                        root = self
-                    else:
-                        root = self._root_ref()
-
                     old_value = self._parameters[name]
-                    fast_params = root.fast_params[:]
+                    fast_params = self.root.fast_params[:]
                     if not fast_params:
                         raise Exception(
                             "Cannot assign parameters to patched module which "
@@ -316,7 +326,15 @@ def _make_functional(
 
     true_forward = type(module).forward
 
-    def patched_forward(self, *args, **kwargs):
+    def patched_forward(self, *args, params=None, **kwargs):
+        if self.direct_submodule_call:
+            # If submodule was called directly, run intialisation that happens
+            # at top level call. If *full set of params* is provided here, it 
+            # will use those. If not, it will fall back on fast weights.
+            # In the future, we should be able to support passing only the 
+            # submodule (+ children) weights here, but that's not simple.
+            self.root._refill_params_box(params)
+
         with _modify_internally(self):
             for name, param in zip(
                 self._param_names,
@@ -387,9 +405,8 @@ def make_functional(
     param_mapping = _utils._get_param_mapping(module, [], [])
     setattr(fmodule, "_param_mapping", param_mapping)
 
-    def _patched_forward(self, *args, **kwargs):
-        if "params" in kwargs:
-            params = kwargs.pop('params')
+    def _refill_params_box(self, params):
+        if params is not None:
             self.fast_params = params  # update view on latest fast params
         elif self.fast_params is None:
             raise ValueError(
@@ -399,6 +416,10 @@ def make_functional(
 
         # Copy fast parameters into params_box for use in boxed_forward
         params_box[0] = self._expand_params(self.fast_params)
+
+
+    def _patched_forward(self, *args, params=None, **kwargs):
+        self._refill_params_box(params)
 
         output = self.boxed_forward(*args, **kwargs)
         
@@ -415,6 +436,7 @@ def make_functional(
     setattr(MonkeyPatched, "forward", _patched_forward)
     setattr(MonkeyPatched, "parameters", _patched_parameters)
     setattr(MonkeyPatched, "update_params", _update_params)
+    setattr(MonkeyPatched, "_refill_params_box", _refill_params_box)
 
     if encapsulator is not None:
         encapsulator(fmodule, module)
