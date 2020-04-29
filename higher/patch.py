@@ -40,9 +40,9 @@ _BufferType = _typing.Dict[str, _typing.Optional[_torch.Tensor]]
 
 @_contextmanager
 def _modify_internally(fmodule):
-    fmodule._being_modifed_internally = True
+    fmodule._being_modified_internally = True
     yield
-    fmodule._being_modifed_internally = False
+    fmodule._being_modified_internally = False
 
 
 def _patched_parameters(
@@ -79,6 +79,12 @@ def _patched_parameters(
 
     time = -1 if time is None else time
 
+    if not self.track_higher_grads and time not in (-1, 0):
+        raise ValueError(
+            "The patched model is not tracking higher gradients. Only the "
+            "latest parameters are available."
+        )
+
     for p in self._fast_params[time]:
         yield p
 
@@ -87,7 +93,8 @@ class _MonkeyPatchBase(_abc.ABC, _torch.nn.Module):
     @_abc.abstractmethod
     def __init__(self) -> None:
         self._param_mapping: _typing.List[int] = []
-        self._being_modifed_internally = True
+        self._being_modified_internally: bool = True
+        self._track_higher_grads: bool = True
 
     def forward(self):
         raise NotImplementedError(
@@ -118,6 +125,18 @@ class _MonkeyPatchBase(_abc.ABC, _torch.nn.Module):
         if self._fast_params is None:
             self._fast_params = []
         self._fast_params.append(value)
+
+    @property
+    def track_higher_grads(self):
+        return self._track_higher_grads
+
+    @track_higher_grads.setter
+    def track_higher_grads(self, value):
+        if not isinstance(value, bool):
+            raise ValueError(
+                "Expected boolean argument. Got: {}.".format(type(value))
+            )
+        self._track_higher_grads = value
 
 
 def buffer_sync(
@@ -194,6 +213,7 @@ def _make_functional(
 
         def __init__(self, original_params, root) -> None:
             _torch.nn.Module.__init__(self)
+            _MonkeyPatchBase.__init__(self)
             self._root_ref = _weakref.ref(root) if root else None
 
             self._fast_params = None
@@ -235,7 +255,7 @@ def _make_functional(
                     raise TypeError("Require Tensor as fast weights. "
                                     "Got {}".format(_torch.typename(value)))
 
-                if not self._being_modifed_internally:
+                if not self._being_modified_internally:
                     # Additional behaviour for when fast weights are being
                     # directly modified goes here:
                     old_value = self._parameters[name]
