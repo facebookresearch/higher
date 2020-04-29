@@ -85,8 +85,7 @@ def _patched_parameters(
             "latest parameters are available."
         )
 
-    for p in self._fast_params[time]:
-        yield p
+    return iter(self._fast_params[time])
 
 
 class _MonkeyPatchBase(_abc.ABC, _torch.nn.Module):
@@ -113,6 +112,11 @@ class _MonkeyPatchBase(_abc.ABC, _torch.nn.Module):
 
     @property
     def init_fast_params(self):
+        if not self.track_higher_grads:
+            raise Exception(
+                "Cannot get initial parameters when not tracking higher "
+                "gradients."
+            )
         return self._fast_params[0]
 
     @property
@@ -124,7 +128,10 @@ class _MonkeyPatchBase(_abc.ABC, _torch.nn.Module):
         value = list(value)
         if self._fast_params is None:
             self._fast_params = []
-        self._fast_params.append(value)
+        if self.track_higher_grads:
+            self._fast_params.append(value)
+        else:
+            self._fast_params[0] = value
 
     @property
     def track_higher_grads(self):
@@ -474,7 +481,8 @@ def make_functional(
 def monkeypatch(
     module: _torch.nn.Module,
     device: _typing.Optional[_torch.device] = None,
-    copy_initial_weights: bool = True
+    copy_initial_weights: bool = True,
+    track_higher_grads: bool = True
 ) -> _MonkeyPatchBase:
     r"""Create a monkey-patched stateless version of a module.
 
@@ -493,6 +501,13 @@ def monkeypatch(
             If this is set to False, the actual module weights will be the
             initial weights of the patched module. This is useful when doing
             MAML, for example.
+        track_higher_grads: if True, during unrolled optimization the graph be
+            retained, and the fast weights will bear grad funcs, so as to permit
+            backpropagation through the optimization process. Setting this to
+            False allows ``monkeypatch`` to be used in "test mode", without
+            potentially tracking higher order gradients. This can be useful when
+            running the training loop at test time, e.g. in k-shot learning
+            experiments, without incurring a significant memory overhead.
 
     Returns:
         ``fmodule``: a "stateless" version of the original module, for which calls
@@ -516,5 +531,6 @@ def monkeypatch(
         fmodule.update_params(params)
 
     fmodule = make_functional(module, encapsulator=encapsulator)
+    fmodule.track_higher_grads = track_higher_grads
 
     return fmodule
