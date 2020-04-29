@@ -335,13 +335,14 @@ class TestPatch(unittest.TestCase):
 
         ctx_opts = {"copy_initial_weights": False, "track_higher_grads": False}
         with higher.innerloop_ctx(model, opt, **ctx_opts) as (fmodel, diffopt):
+            init_params = fmodel.parameters(time=0)
             for _ in range(10):
                 inputs = torch.rand(8, 4)
                 loss = fmodel(inputs).sum().pow(2)
                 diffopt.step(loss)
             param_sum = sum(p.sum() for p in fmodel.parameters())
             final_grads = torch.autograd.grad(
-                param_sum, fmodel.parameters(time=0), allow_unused=True
+                param_sum, init_params, allow_unused=True
             )
             param_sum.backward()
             for p, g in zip(model.parameters(), final_grads):
