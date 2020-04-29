@@ -83,7 +83,10 @@ def innerloop_ctx(
         ``DifferentiableOptimizer`` instance of the right subtype.
     """
     fmodel = monkeypatch(
-        model, device, copy_initial_weights=copy_initial_weights
+        model, 
+        device, 
+        copy_initial_weights=copy_initial_weights,
+        track_higher_grads=track_higher_grads
     )
     diffopt = optim.get_diff_optim(
         opt,
