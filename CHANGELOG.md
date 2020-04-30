@@ -38,9 +38,11 @@ Fixes:
 - Incorporate `eps` hyperparameter in differentiable Adagrad implementation.
 - Release references to fast weights in `params_box[0]` after each `forward` call. This should avoid memory leaks in certain use cases.
 - Fix how `fmodel.parameters()` returns iterables which avoids logic errors when running patched modules in test mode.
+- Fix memory leaks/efficiency issues when running loops with `track_higher_grads=False`.
 
 Improvements:
 - Extended test coverage for RNN variants.
+- Minor improvements to various unit tests.
 - General codebase clean-up (removing deprecated functions, fixing typos).
 
 Version 0.1.5
