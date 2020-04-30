@@ -1,6 +1,48 @@
 Changelog
 =========
 
+Version 0.2
+-----------
+New:
+- Patched model parameters can be modified directly, while still tracking
+updates for the purpose of computing higher order gradients. This allows practices like:
+```python
+fmodel = monkeypatch(model)
+weight = fmodel.linear.weight
+new_weight = some_differentiable_function(weight)
+fmodel.linear.weight = new_weight
+```
+- Support calling submodules of patched module directly, e.g.:
+```python
+class Model(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.submodule = nn.Linear(3,4)
+
+    def forward(self, inputs):
+        return self.submodule(inputs)
+
+model = Model()
+fmodel = higher.monkeypatch(model)
+inputs = torch.rand(2,3)
+
+models = (model, fmodel, model.submodule, fmodel.submodule)
+for m1 in models:
+    for m2 in models:
+        assert torch.equal(m1(inputs), m2(inputs))
+```
+- Add property `track_higher_grads` to patched module, allowing them to behave like normal (unpatched) modules at test time. This makes their performance roughly equivalent to running the unpatched module, reducing the need to write more code for test loops.
+
+Fixes:
+- Fix monkey-patching logic for RNN variants to support PyTorch v1.4.
+- Incorporate `eps` hyperparameter in differentiable Adagrad implementation.
+- Release references to fast weights in `params_box[0]` after each `forward` call. This should avoid memory leaks in certain use cases.
+- Fix how `fmodel.parameters()` returns iterables which avoids logic errors when running patched modules in test mode.
+
+Improvements:
+- Extended test coverage for RNN variants.
+- General codebase clean-up (removing deprecated functions, fixing typos).
+
 Version 0.1.5
 -------------
 New:
