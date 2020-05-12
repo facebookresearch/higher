@@ -1,4 +1,4 @@
-![higher logo](./resources/higher_logo_banner.png)
+![higher logo](https://github.com/facebookresearch/higher/raw/master/resources/higher_logo.png)
 --------------------------------------------------------------------------------
 
 `higher` is a library providing support for higher-order optimization, e.g. through unrolled first-order optimization loops, of "meta" aspects of these loops. It provides tools for turning existing `torch.nn.Module` instances "stateless", meaning that changes to the parameters thereof can be tracked, and gradient with regard to intermediate parameters can be taken. It also provides a suite of differentiable optimizers, to facilitate the implementation of various meta-learning approaches.
@@ -10,7 +10,12 @@ Full documentation is available at https://higher.readthedocs.io/en/latest/.
 * Python version >= 3.5
 * PyTorch version >= 1.3
 
-To install `higher`:
+To install `higher` from [PyPi](https://pypi.org/project/higher/):
+```bash
+pip install higher
+```
+
+To install `higher` from source:
 ```bash
 git clone git@github.com:facebookresearch/higher.git
 cd higher

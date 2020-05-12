@@ -8,3 +8,9 @@ nosetests.xml
 *.pdf
 *.gif
 *.tiff
+tmp/*
+build/*
+dist/*
+*.egg-info/*
+*.ipynb
+.ipynb_checkpoints/*
