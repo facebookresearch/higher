@@ -21,6 +21,10 @@ from setuptools import setup
 HERE = pathlib.Path(__file__).parent
 
 README = (HERE / "README.md").read_text()
+README = README.replace(
+    "](./", 
+    "](https://github.com/facebookresearch/higher/blob/master/"
+)
 DESC = ('A pytorch library allowing users to obtain higher order gradients '
         'over losses spanning training loops rather than individual training '
         'steps.')
