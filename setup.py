@@ -40,7 +40,7 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url="https://github.com/facebookresearch/higher",
     keywords='second-order, gradient descent, optimization, meta-learning',
-    py_modules=['higher'],
+    packages=['higher'],
     install_requires=['torch'],
     include_package_data=True,
     license='Apache',
