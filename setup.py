@@ -14,16 +14,42 @@
 
 """Installation function for the higher project."""
 
+import pathlib
 from setuptools import setup
 
+# current directory
+HERE = pathlib.Path(__file__).parent
+
+README = (HERE / "README.md").read_text()
+DESC = ('A pytorch library allowing users to obtain higher order gradients '
+        'over losses spanning training loops rather than individual training '
+        'steps.')
+
+REQUIRES_PYTHON = '>=3.6.0'
+VERSION = (HERE / "version.txt").read_text().strip()
+
+# run setup
 setup(
     name='higher',
+    version=VERSION,
+    description=DESC,
+    long_description=README,
+    long_description_content_type="text/markdown",
     author='Edward Grefenstette',
     author_email='egrefen@fb.com',
-    version='0.2',
+    python_requires=REQUIRES_PYTHON,
+    url="https://github.com/facebookresearch/higher",
     keywords='second-order, gradient descent, optimization, meta-learning',
-    packages=['higher'],
+    py_modules=['higher'],
     install_requires=['torch'],
+    include_package_data=True,
+    license='Apache',
+    classifiers=[
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+    ],
     test_suite='nose.collector',
     tests_require=['nose', 'parameterized'],
 )

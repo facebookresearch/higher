@@ -24,6 +24,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import pathlib
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -36,8 +37,10 @@ project = 'higher'
 copyright = '2019, Facebook AI Research (FAIR)'
 author = 'Facebook AI Research (FAIR)'
 
+PROJ_ROOT = pathlib.Path(__file__).parent.parent
+
 # The full version, including alpha/beta/rc tags
-release = '0.1.5'
+release = (PROJ_ROOT / "version.txt").read_text().strip()
 
 
 # -- General configuration ---------------------------------------------------
