@@ -152,6 +152,7 @@ class DifferentiableOptimizer(_abc.ABC):
         params: _typing.Iterable[_torch.Tensor] = None,
         override: _typing.Optional[_OverrideType] = None,
         grad_callback: _typing.Optional[_GradCallbackType] = None,
+        retain_graph: bool = False,
         **kwargs
     ) -> _typing.Iterable[_torch.Tensor]:
         r"""Perform a model update.
@@ -195,6 +196,8 @@ class DifferentiableOptimizer(_abc.ABC):
                 subset) of these gradients every time the step function is
                 called. This callback overrides the default provided when
                 constructing the differentiable optimizer.
+            retain_graph (optional): the graph used to compute the grad will be
+                freed if False and retained if True
 
 
         Returns:
@@ -230,7 +233,8 @@ class DifferentiableOptimizer(_abc.ABC):
             loss,
             grad_targets,
             create_graph=self._track_higher_grads,
-            allow_unused=True  # boo
+            allow_unused=True,
+            retain_graph=retain_graph
         )
 
         if grad_callback is not None:
