@@ -375,7 +375,16 @@ def _make_functional(
                     self._parameters[wn] for wn in self._flat_weights_names
                 ]
 
-        return true_forward(self, *args, **kwargs)
+        # Call true_forward after some checks
+        with _warnings.catch_warnings():
+
+            # If running RNNs on GPU, surpress the warnings due to flattening
+            # not happening here. Maybe we should raise a warning of our own?
+            is_RNN = isinstance(module, _torch.nn.RNNBase)
+            if is_RNN and _torch.cuda.is_available():
+                _warnings.simplefilter("ignore", category=UserWarning)
+            
+            return true_forward(self, *args, **kwargs)
 
     setattr(MonkeyPatched, "forward", patched_forward)
 
