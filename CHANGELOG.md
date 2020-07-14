@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 0.2.1
+-------------
+Fixes:
+- Surpress warnings about not flattening parameters when using RNNs on GPU.
+
 Version 0.2
 -----------
 New:
