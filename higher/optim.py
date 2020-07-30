@@ -337,6 +337,8 @@ class DifferentiableAdam(DifferentiableOptimizer):
                     max_exp_avg_sq = state['max_exp_avg_sq']
 
                 state['step'] += 1
+                bias_correction1 = 1 - beta1**state['step']
+                bias_correction2 = 1 - beta2**state['step']
 
                 if weight_decay != 0:
                     g = g + (weight_decay * p)
@@ -357,16 +359,17 @@ class DifferentiableAdam(DifferentiableOptimizer):
                         max_exp_avg_sq, exp_avg_sq
                     )
                     # Use the max. for normalizing running avg. of gradient
-                    denom = _add(max_exp_avg_sq.sqrt(), group['eps'])
+                    denom = _add(
+                        max_exp_avg_sq.sqrt() / _math.sqrt(bias_correction2),
+                        group['eps']
+                    )
                 else:
-                    denom = _add(exp_avg_sq.sqrt(), group['eps'])
+                    denom = _add(
+                        exp_avg_sq.sqrt() / _math.sqrt(bias_correction2),
+                        group['eps']
+                    )
 
-                bias_correction1 = 1 - beta1**state['step']
-                bias_correction2 = 1 - beta2**state['step']
-                step_size = (
-                    group['lr'] * _math.sqrt(bias_correction2)
-                    / bias_correction1
-                )
+                step_size = group['lr'] / bias_correction1
 
                 group['params'][p_idx] = _addcdiv(
                     p, -step_size, exp_avg, denom
