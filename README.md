@@ -158,6 +158,19 @@ It is possible to use optimizers other that those found in `torch.optim`. A diff
 
 You can find examples of how to test for gradient correctness using finite difference methods in `tests/test_optim.py`. Please note that some stability tricks may be needed to avoid `nan`s in the gradients. See the `higher.optim.DifferentiableAdam` implementation for examples of mitigation strategies, e.g. identify operations that yield exploding gradients, e.g. typically those taking the square roots of moving averages (which are intially zero), and register a backward hook using `x.register_hook` on the inputs `x` to those functions, using the helper function `_get_mask_closure` from `higher.optim`.
 
+# Related Projects
+
+The following papers and codebases reference or directly use `higher`:
+
+* [Bechtle, Sarah, et al. "Meta-learning via learned loss." (2019).](https://arxiv.org/abs/1906.05374)
+* [Wang, Haoxiang, Ruoyu Sun, and Bo Li. "Global convergence and induced kernels of gradient-based meta-learning with neural nets." (2020)](https://arxiv.org/abs/2006.14606)
+* [Morse, Kristen, et al. "Learning State-Dependent Losses for Inverse Dynamics Learning." (2020)](https://arxiv.org/abs/2003.04947)
+* [Holla, Nithin, et al. "Learning to Learn to Disambiguate: Meta-Learning for Few-Shot Word Sense Disambiguation." (2020)](https://arxiv.org/abs/2004.14355)
+* [De Angeli, Nicola. "State of the Art on: Meta-learning for Few-Shot Classification." (2020)](https://pdfs.semanticscholar.org/8ec2/a4f069a1b73a5a91be6a43d6e1af028b8ca1.pdf)
+* [Zhou, Allan, Tom Knowles, and Chelsea Finn. "Meta-Learning Symmetries by Reparameterization." (2020)](https://arxiv.org/abs/2007.02933)
+
+Is yours missing? Raise an [issue](https://github.com/facebookresearch/higher/issues/new) or add it via a [pull request](https://github.com/facebookresearch/higher/compare)!
+
 # Release Notes
 See the [changelog](./CHANGELOG.md) for release notes.
 
