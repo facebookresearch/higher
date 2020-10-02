@@ -221,10 +221,7 @@ class DifferentiableOptimizer(_abc.ABC):
         params = list(params)
 
         # This allows us to gracefully deal with cases where params are frozen.
-        grad_targets = [
-            p if p.requires_grad else _torch.tensor([], requires_grad=True)
-            for p in params
-        ]
+        grad_targets = [p for p in params if p.requires_grad]
 
         all_grads = _torch.autograd.grad(
             loss,
