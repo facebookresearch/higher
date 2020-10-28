@@ -22,6 +22,9 @@ https://arxiv.org/abs/1703.03400
 
 This code has been modified from Jackie Loong's PyTorch MAML implementation:
 https://github.com/dragen1860/MAML-Pytorch/blob/master/omniglot_train.py
+
+Our MAML++ fork and experiments are available at:
+https://github.com/bamos/HowToTrainYourMAMLPytorch
 """
 
 import argparse
