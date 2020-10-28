@@ -299,7 +299,7 @@ def finite_difference(model, closure, eps):
         fd_param = torch.zeros_like(param)
         for p, fdp in zip(param.flatten(), fd_param.flatten()):
             p.data.add_(eps)
-            fdp.fill_((closure() - ground) / eps)
+            fdp.data.fill_((closure() - ground) / eps)
             p.data.sub_(eps)
         fd_params.append(fd_param)
     return fd_params
