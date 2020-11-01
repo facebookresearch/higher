@@ -149,14 +149,14 @@ def train(db, net, device, meta_opt, epoch, log):
                 # higher is able to automatically keep copies of
                 # your network's parameters as they are being updated.
                 for _ in range(n_inner_iter):
-                    spt_logits = fnet(x_spt[i])
+                    spt_logits = fnet(x_spt[i])[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
 
                 # The final set of adapted parameters will induce some
                 # final loss and accuracy on the query dataset.
                 # These will be used to update the model's meta-parameters.
-                qry_logits = fnet(x_qry[i])
+                qry_logits = fnet(x_qry[i])[0]
                 qry_loss = F.cross_entropy(qry_logits, y_qry[i])
                 qry_losses.append(qry_loss.detach())
                 qry_acc = (qry_logits.argmax(
@@ -217,12 +217,12 @@ def test(db, net, device, epoch, log):
                 # gradient steps w.r.t. the model's parameters.
                 # This adapts the model's meta-parameters to the task.
                 for _ in range(n_inner_iter):
-                    spt_logits = fnet(x_spt[i])
+                    spt_logits = fnet(x_spt[i])[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
 
                 # The query loss and acc induced by these parameters.
-                qry_logits = fnet(x_qry[i]).detach()
+                qry_logits = fnet(x_qry[i])[0].detach()
                 qry_loss = F.cross_entropy(
                     qry_logits, y_qry[i], reduction='none')
                 qry_losses.append(qry_loss.detach())
