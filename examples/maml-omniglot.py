@@ -102,7 +102,7 @@ def main():
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
 
-    net = iRevNet([4,4,4], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
+    net = iRevNet([3], [1], args.n_way, nChannels=[64], init_ds=0,
                  dropout_rate=0.1, affineBN=True, in_shape=[1,28,28], mult=4).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
