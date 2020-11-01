@@ -46,6 +46,7 @@ import torch.optim as optim
 import higher
 
 from support.omniglot_loaders import OmniglotNShot
+from irevnet.models.iRevNet import iRevNet
 
 
 def main():
