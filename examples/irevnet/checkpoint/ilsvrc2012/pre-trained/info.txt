@@ -1,0 +1,13 @@
+# i-RevNet 301 as analyzed in: "i-RevNet: Deep Invertible Networks" 
+# https://openreview.net/pdf?id=HJsjkMb0Z 
+# ICLR 2018
+#
+# Pre-trained model: 
+# https://drive.google.com/uc?id=1eQtZIpmtVM0-JDv_2nx3xMuGKjA1beLF&export=download
+#
+# Performance: Prec@1 74.018 Prec@5 91.590
+# Model config:
+
+RevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
+                    nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
+                    dropout_rate=0., affineBN=True, in_shape=[3, 224, 224])

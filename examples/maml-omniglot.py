@@ -85,21 +85,24 @@ def main():
     # Before higher, models could *not* be created like this
     # and the parameters needed to be manually updated and copied
     # for the updates.
-    net = nn.Sequential(
-        nn.Conv2d(1, 64, 3),
-        nn.BatchNorm2d(64, momentum=1, affine=True),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(2, 2),
-        nn.Conv2d(64, 64, 3),
-        nn.BatchNorm2d(64, momentum=1, affine=True),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(2, 2),
-        nn.Conv2d(64, 64, 3),
-        nn.BatchNorm2d(64, momentum=1, affine=True),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(2, 2),
-        Flatten(),
-        nn.Linear(64, args.n_way)).to(device)
+    # net = nn.Sequential(
+    #     nn.Conv2d(1, 64, 3),
+    #     nn.BatchNorm2d(64, momentum=1, affine=True),
+    #     nn.ReLU(inplace=True),
+    #     nn.MaxPool2d(2, 2),
+    #     nn.Conv2d(64, 64, 3),
+    #     nn.BatchNorm2d(64, momentum=1, affine=True),
+    #     nn.ReLU(inplace=True),
+    #     nn.MaxPool2d(2, 2),
+    #     nn.Conv2d(64, 64, 3),
+    #     nn.BatchNorm2d(64, momentum=1, affine=True),
+    #     nn.ReLU(inplace=True),
+    #     nn.MaxPool2d(2, 2),
+    #     Flatten(),
+    #     nn.Linear(64, args.n_way)).to(device)
+
+    net = iRevNet([4,4,4], [1,2,2], self.n_way, nChannels=[16,64,256], init_ds=0,
+                 dropout_rate=0.1, affineBN=True, in_shape=[1,28,28], mult=4).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
     # to be adapted.
