@@ -97,6 +97,34 @@ _test_param_sweep = [
         optim.Adam,
     ),
     (
+        "simple_model_adamw",
+        lambda self: self._model,
+        optim.AdamW,
+    ),
+    (
+        "simple_model_adamw_weight_decay",
+        lambda self: self._model,
+        optim.AdamW,
+        {
+            "weight_decay": 0.1
+        },
+    ),
+    (
+        "share_weight_model_adamw",
+        lambda self: self._shared_param_model,
+        optim.AdamW,
+    ),
+    (
+        "share_weight_seq_model_adamw",
+        lambda self: self._shared_param_seq_model,
+        optim.AdamW,
+    ),
+    (
+        "partially_used_model_adamw",
+        lambda self: self._partially_used_model,
+        optim.AdamW,
+    ),
+    (
         "simple_model_adadelta",
         lambda self: self._model,
         optim.Adadelta,
