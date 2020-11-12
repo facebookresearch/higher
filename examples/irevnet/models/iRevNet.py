@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from .model_utils import split, merge, injective_pad, psi
+from .rev_utils import rev_sequential_backward_wrapper
 
 
 class irevnet_block(nn.Module):
@@ -82,13 +83,14 @@ class irevnet_block(nn.Module):
 
 class iRevNet(nn.Module):
     def __init__(self, nBlocks, nStrides, nClasses, nChannels=None, init_ds=2,
-                 dropout_rate=0., affineBN=True, in_shape=None, mult=4):
+                 dropout_rate=0., affineBN=True, in_shape=None, mult=4, use_rev_bw=False):
         super(iRevNet, self).__init__()
         self.ds = in_shape[2]//2**(nStrides.count(2)+init_ds//2)
         self.init_ds = init_ds
         self.in_ch = in_shape[0] * 2**self.init_ds
         self.nBlocks = nBlocks
         self.first = True
+        self.use_rev_bw = use_rev_bw
 
         print('')
         print(' == Building iRevNet %d == ' % (sum(nBlocks) * 3 + 1))
@@ -107,7 +109,7 @@ class iRevNet(nn.Module):
     def irevnet_stack(self, _block, nChannels, nBlocks, nStrides, dropout_rate,
                       affineBN, in_ch, mult):
         """ Create stack of irevnet blocks """
-        block_list = nn.ModuleList()
+        block_list = []
         strides = []
         channels = []
         for channel, depth, stride in zip(nChannels, nBlocks, nStrides):
@@ -128,8 +130,12 @@ class iRevNet(nn.Module):
         if self.init_ds != 0:
             x = self.init_psi.forward(x)
         out = (x[:, :n, :, :], x[:, n:, :, :])
-        for block in self.stack:
-            out = block.forward(out)
+        if self.use_rev_bw:
+            seq = RevSequential(self.stack)
+            out = rev_sequential_backward_wrapper(seq, out, preserve_rng_state=False)
+        else:
+            for block in self.stack:
+                out = block.forward(out)
         out_bij = merge(out[0], out[1])
         out = F.relu(self.bn1(out_bij))
         out = F.avg_pool2d(out, self.ds)
@@ -147,6 +153,30 @@ class iRevNet(nn.Module):
             x = self.init_psi.inverse(out)
         else:
             x = out
+        return x
+
+class RevSequential(nn.ModuleList):
+    def __init__(self, modules=None):
+        super().__init__(modules)
+
+    def append(self, module):
+        assert hasattr(module, 'invert') and callable(module.invert)
+        super().append(module)
+
+    def extend(self, modules):
+        for m in modules:
+            self.append(m)
+
+    def forward(self, x):
+        y = x
+        for m in self:
+            y = m(y)
+        return y
+
+    def invert(self, y):
+        x = y
+        for m in list(self)[::-1]:
+            x = m.inverse(x)
         return x
 
 
