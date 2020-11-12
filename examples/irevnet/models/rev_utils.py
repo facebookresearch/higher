@@ -29,7 +29,7 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
         check_backward_validity(inputs)
         # Make sure the input is a list of modules and supports invert operations
         assert isinstance(rev_block_stack, nn.ModuleList)
-        assert hasattr(rev_block_stack, 'invert') and callable(rev_block_stack.invert)
+        assert hasattr(rev_block_stack, 'inverse') and callable(rev_block_stack.inverse)
 
         ctx.rev_block_stack = rev_block_stack
         ctx.preserve_rng_state = preserve_rng_state
@@ -94,7 +94,7 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
                         if ctx.had_cuda_in_fwd:
                             set_device_states(fwd_gpu_devices, fwd_gpu_states)
                         # Restore input from output
-                        inputs = m.invert(*bak_outputs)
+                        inputs = m.inverse(*bak_outputs)
                     # Detach variables from graph
                     # Fix some problem in pytorch1.6
                     inputs = [t.detach().clone() for t in inputs]
@@ -123,7 +123,7 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
                 else:
                     # Don't save rng state
                     # Restore input from output
-                    inputs = m.invert(*bak_outputs)
+                    inputs = m.inverse(*bak_outputs)
                     # Detach variables from graph
                     # Fix some problem in pytorch1.6
                     inputs = [t.detach().clone() for t in inputs]

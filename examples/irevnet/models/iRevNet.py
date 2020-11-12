@@ -160,7 +160,7 @@ class RevSequential(nn.ModuleList):
         super().__init__(modules)
 
     def append(self, module):
-        assert hasattr(module, 'invert') and callable(module.invert)
+        assert hasattr(module, 'inverse') and callable(module.inverse)
         super().append(module)
 
     def extend(self, modules):
@@ -173,7 +173,7 @@ class RevSequential(nn.ModuleList):
             y = m(y)
         return y
 
-    def invert(self, y):
+    def inverse(self, y):
         x = y
         for m in list(self)[::-1]:
             x = m.inverse(x)
