@@ -75,8 +75,8 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
 
         # Get output that saved by forward function
         bak_outputs = ctx.saved_tensors
-
         with torch.no_grad():
+
             # Start from the last module
             for m in list(ctx.rev_block_stack)[::-1]:
 
@@ -98,6 +98,7 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
                     # Detach variables from graph
                     # Fix some problem in pytorch1.6
                     inputs = [t.detach().clone() for t in inputs]
+
                     # You need to set requires_grad to True to differentiate the input.
                     # The derivative is the input of the next backpass function.
                     # This is how grad_output comes.
@@ -138,7 +139,7 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
                     grad_output = tuple(inp.grad if isinstance(inp, torch.Tensor) else inp
                                         for inp in inputs)
                     bak_outputs = inputs
-
+        print(grad_output)
         return (None, None) + grad_output
 
 
