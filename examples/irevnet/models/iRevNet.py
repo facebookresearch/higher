@@ -48,6 +48,7 @@ class irevnet_block(nn.Module):
 
     def forward(self, x0, x1):
         """ bijective or injective block forward """
+        x = (x0, x1)
         if self.pad != 0 and self.stride == 1:
             x = merge(x0, x1)
             x = self.inj_pad.forward(x)
