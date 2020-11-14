@@ -155,9 +155,7 @@ def train(db, net, device, meta_opt, epoch, log):
                     data = data + torch.zeros(1, device=data.device, dtype=data.dtype, requires_grad=True)
                     spt_logits = fnet(data)[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
-                    print("hello")
-                    spt_loss.backward()
-                    diffopt.step()
+                    diffopt.step(spt_loss)
                 # print("new parameters")
                 # print(list(fnet.parameters()))
                 # The final set of adapted parameters will induce some
