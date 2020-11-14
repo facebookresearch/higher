@@ -139,6 +139,7 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
                     grad_output = tuple(inp.grad if isinstance(inp, torch.Tensor) else inp
                                         for inp in inputs)
                     bak_outputs = inputs
+        print("grad_output")
         print(grad_output)
         return (None, None) + grad_output
 
