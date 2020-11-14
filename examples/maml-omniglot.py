@@ -153,7 +153,8 @@ def train(db, net, device, meta_opt, epoch, log):
                 for _ in range(n_inner_iter):
                     spt_logits = fnet(x_spt[i])[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
-                    diffopt.step(spt_loss)
+                    spt_loss.backward()
+                    # diffopt.step(spt_loss)
                 # print("new parameters")
                 # print(list(fnet.parameters()))
                 # The final set of adapted parameters will induce some
