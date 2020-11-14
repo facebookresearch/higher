@@ -136,6 +136,8 @@ class iRevNet(nn.Module):
         else:
             for block in self.stack:
                 out = block.forward(out)
+        print("out")
+        print(out)
         out_bij = merge(out[0], out[1])
         out = F.relu(self.bn1(out_bij))
         out = F.avg_pool2d(out, self.ds)

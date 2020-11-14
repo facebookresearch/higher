@@ -148,14 +148,14 @@ def train(db, net, device, meta_opt, epoch, log):
                 # This adapts the model's meta-parameters to the task.
                 # higher is able to automatically keep copies of
                 # your network's parameters as they are being updated.
-                print("old parameters")
-                print(list(fnet.parameters()))
+                # print("old parameters")
+                # print(list(fnet.parameters()))
                 for _ in range(n_inner_iter):
                     spt_logits = fnet(x_spt[i])[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
-                print("new parameters")
-                print(list(fnet.parameters()))
+                # print("new parameters")
+                # print(list(fnet.parameters()))
                 # The final set of adapted parameters will induce some
                 # final loss and accuracy on the query dataset.
                 # These will be used to update the model's meta-parameters.
