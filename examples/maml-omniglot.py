@@ -222,7 +222,9 @@ def test(db, net, device, epoch, log):
                 # gradient steps w.r.t. the model's parameters.
                 # This adapts the model's meta-parameters to the task.
                 for _ in range(n_inner_iter):
-                    spt_logits = fnet(x_spt[i])[0]
+                    data = x_spt[i]
+                    data = data + torch.zeros(1, device=data.device, dtype=data.dtype, requires_grad=True)
+                    spt_logits = fnet(data)[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
 
