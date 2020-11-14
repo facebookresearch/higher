@@ -63,7 +63,6 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
 
         # Save output for backward function
         ctx.save_for_backward(*outputs)
-        print("use the output!!!")
         return outputs
 
     @staticmethod
@@ -75,6 +74,7 @@ class RevSequentialBackwardFunction(torch.autograd.Function):
         '''
 
         # Get output that saved by forward function
+        print("start backward")
         bak_outputs = ctx.saved_tensors
         with torch.no_grad():
 

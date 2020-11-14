@@ -102,7 +102,7 @@ def main():
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
 
-    net = iRevNet([1,1,1], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
+    net = iRevNet([2,2,2], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
                  dropout_rate=0.1, affineBN=True, in_shape=[1,28,28], mult=4, use_rev_bw=True).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
@@ -151,10 +151,13 @@ def train(db, net, device, meta_opt, epoch, log):
                 # print("old parameters")
                 # print(list(fnet.parameters()))
                 for _ in range(n_inner_iter):
-                    spt_logits = fnet(x_spt[i])[0]
+                    data = x_spt[i]
+                    data = data + torch.zeros(1, device=data.device, dtype=data.dtype, requires_grad=True)
+                    spt_logits = fnet(data)[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
+                    print("hello")
                     spt_loss.backward()
-                    # diffopt.step(spt_loss)
+                    diffopt.step()
                 # print("new parameters")
                 # print(list(fnet.parameters()))
                 # The final set of adapted parameters will induce some
