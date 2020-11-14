@@ -178,10 +178,10 @@ def train(db, net, device, meta_opt, epoch, log):
         qry_accs = 100. * sum(qry_accs) / task_num
         i = epoch + float(batch_idx) / n_train_iter
         iter_time = time.time() - start_time
-        if batch_idx % 4 == 0:
-            print(
-                f'[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}'
-            )
+        # if batch_idx % 4 == 0:
+        #     print(
+        #         f'[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}'
+        #     )
 
         log.append({
             'epoch': i,
@@ -236,9 +236,9 @@ def test(db, net, device, epoch, log):
 
     qry_losses = torch.cat(qry_losses).mean().item()
     qry_accs = 100. * torch.cat(qry_accs).float().mean().item()
-    print(
-        f'[Epoch {epoch+1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}'
-    )
+    # print(
+    #     f'[Epoch {epoch+1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}'
+    # )
     log.append({
         'epoch': epoch + 1,
         'loss': qry_losses,
