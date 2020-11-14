@@ -46,10 +46,10 @@ class irevnet_block(nn.Module):
                       padding=1, bias=False))
         self.bottleneck_block = nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x0, x1):
         """ bijective or injective block forward """
         if self.pad != 0 and self.stride == 1:
-            x = merge(x[0], x[1])
+            x = merge(x0, x1)
             x = self.inj_pad.forward(x)
             x1, x2 = split(x)
             x = (x1, x2)
@@ -62,9 +62,9 @@ class irevnet_block(nn.Module):
         y1 = Fx2 + x1
         return (x2, y1)
 
-    def inverse(self, x):
+    def inverse(self, x0, x1):
         """ bijective or injecitve block inverse """
-        x2, y1 = x[0], x[1]
+        x2, y1 = x0, x1
         if self.stride == 2:
             x2 = self.psi.inverse(x2)
         Fx2 = - self.bottleneck_block(x2)
@@ -130,9 +130,10 @@ class iRevNet(nn.Module):
         if self.init_ds != 0:
             x = self.init_psi.forward(x)
         out = (x[:, :n, :, :], x[:, n:, :, :])
+
         if self.use_rev_bw:
             seq = RevSequential(self.stack)
-            out = rev_sequential_backward_wrapper(seq, out, preserve_rng_state=False)
+            out = rev_sequential_backward_wrapper(seq, out[0], out[1], preserve_rng_state=False)
         else:
             for block in self.stack:
                 out = block.forward(out)
@@ -167,11 +168,11 @@ class RevSequential(nn.ModuleList):
         for m in modules:
             self.append(m)
 
-    def forward(self, x):
-        y = x
+    def forward(self, x1, x2):
+        y1, y2 = x1, x2
         for m in self:
-            y = m(y)
-        return y
+            y1, y2 = m(y1, y2)
+        return y1, y2
 
     def inverse(self, y):
         x = y
@@ -181,9 +182,9 @@ class RevSequential(nn.ModuleList):
 
 
 if __name__ == '__main__':
-    model = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
-                    nChannels=None, nClasses=1000, init_ds=2,
-                    dropout_rate=0., affineBN=True, in_shape=[3, 224, 224],
-                    mult=4)
-    y = model(Variable(torch.randn(1, 3, 224, 224)))
-    print(y.size())
+    model = iRevNet([1, 1, 1], [1, 1, 1], 3, nChannels=[16], init_ds=0,
+                 dropout_rate=0.1, affineBN=True, in_shape=[3,24,24], mult=4, use_rev_bw=True)
+    im = Variable(torch.randn(1, 3, 24, 24))
+    im += torch.zeros(1, device=im.device, dtype=im.dtype, requires_grad=True)
+    y = model(im)[0]
+    y.sum().backward()
