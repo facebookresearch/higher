@@ -161,7 +161,9 @@ def train(db, net, device, meta_opt, epoch, log):
                 # The final set of adapted parameters will induce some
                 # final loss and accuracy on the query dataset.
                 # These will be used to update the model's meta-parameters.
-                qry_logits = fnet(x_qry[i])[0]
+                qry_data = x_qry[i]
+                qry_data = qry_data + torch.zeros(1, device=qry_data.device, dtype=qry_data.dtype, requires_grad=True)
+                qry_logits = fnet(qry_data)[0]
                 qry_loss = F.cross_entropy(qry_logits, y_qry[i])
                 qry_losses.append(qry_loss.detach())
                 qry_acc = (qry_logits.argmax(
