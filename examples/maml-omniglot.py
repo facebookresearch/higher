@@ -112,8 +112,9 @@ def main():
     log = []
     for epoch in range(150):
         # train(db, net, device, meta_opt, epoch, log)
-        test(db, net, device, epoch, log)
-        plot(log)
+        # test(db, net, device, epoch, log)
+        testMemory(db, net, device, epoch, log)
+        # plot(log)
 
 
 def train(db, net, device, meta_opt, epoch, log):
@@ -239,6 +240,65 @@ def test(db, net, device, epoch, log):
                 qry_losses.append(qry_loss.detach())
                 qry_accs.append(
                     (qry_logits.argmax(dim=1) == y_qry[i]).detach())
+
+    qry_losses = torch.cat(qry_losses).mean().item()
+    qry_accs = 100. * torch.cat(qry_accs).float().mean().item()
+    print(
+        f'[Epoch {epoch+1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}'
+    )
+    print(torch.cuda.memory_summary())
+    log.append({
+        'epoch': epoch + 1,
+        'loss': qry_losses,
+        'acc': qry_accs,
+        'mode': 'test',
+        'time': time.time(),
+    })
+
+def testMemory(db, net, device, epoch, log):
+    # Crucially in our testing procedure here, we do *not* fine-tune
+    # the model during testing for simplicity.
+    # Most research papers using MAML for this task do an extra
+    # stage of fine-tuning here that should be added if you are
+    # adapting this code for research.
+    net.train()
+    n_test_iter = db.x_test.shape[0] // db.batchsz
+
+    qry_losses = []
+    qry_accs = []
+
+    for batch_idx in range(n_test_iter):
+        x_spt, y_spt, x_qry, y_qry = db.next('test')
+
+
+        task_num, setsz, c_, h, w = x_spt.size()
+        querysz = x_qry.size(1)
+
+        # TODO: Maybe pull this out into a separate module so it
+        # doesn't have to be duplicated between `train` and `test`?
+        n_inner_iter = 5
+        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-1)
+
+        for i in range(task_num):
+            # Optimize the likelihood of the support set by taking
+            # gradient steps w.r.t. the model's parameters.
+            # This adapts the model's meta-parameters to the task.
+            for _ in range(n_inner_iter):
+                data = x_spt[i]
+                data = data + torch.zeros(1, device=data.device, dtype=data.dtype, requires_grad=True)
+                spt_logits = net(data)[0]
+                spt_loss = F.cross_entropy(spt_logits, y_spt[i])
+                inner_opt.step(spt_loss)
+
+            qry_data = x_qry[i]
+            qry_data = qry_data + torch.zeros(1, device=qry_data.device, dtype=qry_data.dtype, requires_grad=True)
+            # The query loss and acc induced by these parameters.
+            qry_logits = net(qry_data)[0].detach()
+            qry_loss = F.cross_entropy(
+                qry_logits, y_qry[i], reduction='none')
+            qry_losses.append(qry_loss.detach())
+            qry_accs.append(
+                (qry_logits.argmax(dim=1) == y_qry[i]).detach())
 
     qry_losses = torch.cat(qry_losses).mean().item()
     qry_accs = 100. * torch.cat(qry_accs).float().mean().item()
