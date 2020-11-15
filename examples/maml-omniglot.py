@@ -284,11 +284,13 @@ def testMemory(db, net, device, epoch, log):
             # gradient steps w.r.t. the model's parameters.
             # This adapts the model's meta-parameters to the task.
             for _ in range(n_inner_iter):
+                inner_opt.zero_grad()
                 data = x_spt[i]
                 data = data + torch.zeros(1, device=data.device, dtype=data.dtype, requires_grad=True)
                 spt_logits = net(data)[0]
                 spt_loss = F.cross_entropy(spt_logits, y_spt[i])
-                inner_opt.step(spt_loss)
+                spt_loss.backward()
+                inner_opt.step()
 
             qry_data = x_qry[i]
             qry_data = qry_data + torch.zeros(1, device=qry_data.device, dtype=qry_data.dtype, requires_grad=True)
