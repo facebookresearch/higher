@@ -111,7 +111,7 @@ def main():
 
     log = []
     for epoch in range(150):
-        train(db, net, device, meta_opt, epoch, log)
+        # train(db, net, device, meta_opt, epoch, log)
         test(db, net, device, epoch, log)
         plot(log)
 
