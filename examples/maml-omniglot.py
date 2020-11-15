@@ -230,8 +230,10 @@ def test(db, net, device, epoch, log):
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
 
+                qry_data = x_qry[i]
+                qry_data = qry_data + torch.zeros(1, device=qry_data.device, dtype=qry_data.dtype, requires_grad=True)
                 # The query loss and acc induced by these parameters.
-                qry_logits = fnet(x_qry[i])[0].detach()
+                qry_logits = fnet(qry_data)[0].detach()
                 qry_loss = F.cross_entropy(
                     qry_logits, y_qry[i], reduction='none')
                 qry_losses.append(qry_loss.detach())
