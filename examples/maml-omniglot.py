@@ -101,20 +101,18 @@ def main():
     #     nn.MaxPool2d(2, 2),
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
-    net = iRevNet([6,6,6], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
+    net = iRevNet([1,1,1], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
                  dropout_rate=0.1, affineBN=True, in_shape=[3,28,28], mult=4, use_rev_bw=False).to(device)
-
 
     # We will use Adam to (meta-)optimize the initial parameters
     # to be adapted.
     meta_opt = optim.Adam(net.parameters(), lr=1e-3)
 
     log = []
-    for epoch in range(150):
-        # train(db, net, device, meta_opt, epoch, log)
-        # test(db, net, device, epoch, log)
-        testMemory(db, net, device, epoch, log)
-        # plot(log)
+    for epoch in range(100):
+        train(db, net, device, meta_opt, epoch, log)
+        test(db, net, device, epoch, log)
+        plot(log)
 
 
 def train(db, net, device, meta_opt, epoch, log):
@@ -149,16 +147,12 @@ def train(db, net, device, meta_opt, epoch, log):
                 # This adapts the model's meta-parameters to the task.
                 # higher is able to automatically keep copies of
                 # your network's parameters as they are being updated.
-                # print("old parameters")
-                # print(list(fnet.parameters()))
                 for _ in range(n_inner_iter):
                     data = x_spt[i]
                     data = data + torch.zeros(1, device=data.device, dtype=data.dtype, requires_grad=True)
                     spt_logits = fnet(data)[0]
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
-                # print("new parameters")
-                # print(list(fnet.parameters()))
                 # The final set of adapted parameters will induce some
                 # final loss and accuracy on the query dataset.
                 # These will be used to update the model's meta-parameters.
@@ -246,7 +240,6 @@ def test(db, net, device, epoch, log):
     print(
         f'[Epoch {epoch+1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}'
     )
-    print(torch.cuda.memory_summary())
     log.append({
         'epoch': epoch + 1,
         'loss': qry_losses,
@@ -254,69 +247,6 @@ def test(db, net, device, epoch, log):
         'mode': 'test',
         'time': time.time(),
     })
-
-def testMemory(db, net, device, epoch, log):
-    # Crucially in our testing procedure here, we do *not* fine-tune
-    # the model during testing for simplicity.
-    # Most research papers using MAML for this task do an extra
-    # stage of fine-tuning here that should be added if you are
-    # adapting this code for research.
-    net.train()
-    n_test_iter = db.x_test.shape[0] // db.batchsz
-
-    qry_losses = []
-    qry_accs = []
-
-    for batch_idx in range(n_test_iter):
-        x_spt, y_spt, x_qry, y_qry = db.next('test')
-
-
-        task_num, setsz, c_, h, w = x_spt.size()
-        querysz = x_qry.size(1)
-
-        # TODO: Maybe pull this out into a separate module so it
-        # doesn't have to be duplicated between `train` and `test`?
-        n_inner_iter = 5
-        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-1)
-
-        for i in range(task_num):
-            # Optimize the likelihood of the support set by taking
-            # gradient steps w.r.t. the model's parameters.
-            # This adapts the model's meta-parameters to the task.
-            for _ in range(n_inner_iter):
-                inner_opt.zero_grad()
-                data = x_spt[i]
-                data = data + torch.zeros(1, device=data.device, dtype=data.dtype, requires_grad=True)
-                spt_logits = net(data)[0]
-                spt_loss = F.cross_entropy(spt_logits, y_spt[i])
-                spt_loss.backward()
-                inner_opt.step()
-
-            qry_data = x_qry[i]
-            qry_data = qry_data + torch.zeros(1, device=qry_data.device, dtype=qry_data.dtype, requires_grad=True)
-            # The query loss and acc induced by these parameters.
-            qry_logits = net(qry_data)[0].detach()
-            qry_loss = F.cross_entropy(
-                qry_logits, y_qry[i], reduction='none')
-            qry_losses.append(qry_loss.detach())
-            qry_accs.append(
-                (qry_logits.argmax(dim=1) == y_qry[i]).detach())
-
-    qry_losses = torch.cat(qry_losses).mean().item()
-    qry_accs = 100. * torch.cat(qry_accs).float().mean().item()
-    print(
-        f'[Epoch {epoch+1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}'
-    )
-    print(torch.cuda.memory_summary())
-    log.append({
-        'epoch': epoch + 1,
-        'loss': qry_losses,
-        'acc': qry_accs,
-        'mode': 'test',
-        'time': time.time(),
-    })
-
-
 
 
 def plot(log):
