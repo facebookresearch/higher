@@ -10,8 +10,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from model_utils import split, merge, injective_pad, psi
-from rev_utils import rev_sequential_backward_wrapper
+from .model_utils import split, merge, injective_pad, psi
+from .rev_utils import rev_sequential_backward_wrapper
 
 
 class irevnet_block(nn.Module):
