@@ -10,8 +10,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from .model_utils import split, merge, injective_pad, psi
-from .rev_utils import rev_sequential_backward_wrapper
+from model_utils import split, merge, injective_pad, psi
+from rev_utils import rev_sequential_backward_wrapper
 
 
 class irevnet_block(nn.Module):
@@ -183,9 +183,10 @@ class RevSequential(nn.ModuleList):
 
 
 if __name__ == '__main__':
-    model = iRevNet([1, 1, 1], [1, 2, 2], 3, nChannels=[16, 64, 256], init_ds=0,
-                 dropout_rate=0.1, affineBN=True, in_shape=[1,28,28], mult=4, use_rev_bw=True)
-    im = Variable(torch.randn(1, 1, 28, 28))
+    model = iRevNet([6, 6, 6], [1, 2, 2], 3, nChannels=[16, 64, 256], init_ds=0,
+                 dropout_rate=0.1, affineBN=True, in_shape=[3,28,28], mult=4, use_rev_bw=True).cuda()
+    im = Variable(torch.randn(1, 3, 28, 28)).cuda()
     im += torch.zeros(1, device=im.device, dtype=im.dtype, requires_grad=True)
     y = model(im)[0]
     y.sum().backward()
+    print(torch.cuda.memory_summary())
