@@ -118,13 +118,10 @@ def main():
 
 def train(db, net, device, meta_opt, epoch, log):
     net.train()
-    n_train_iter = db.x_train.shape[0] // db.batchsz
-
-    for batch_idx in range(n_train_iter):
+    for batch_idx, (x_spt, y_spt, x_qry, y_qry) in enumerate(db):
         start_time = time.time()
+        x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), x_qry.to(device), y_qry.to(device)
         # Sample a batch of support and query images and labels.
-        x_spt, y_spt, x_qry, y_qry = db.next()
-
         task_num, setsz, c_, h, w = x_spt.size()
         querysz = x_qry.size(1)
 
@@ -202,8 +199,9 @@ def test(db, net, device, epoch, log):
     qry_losses = []
     qry_accs = []
 
-    for batch_idx in range(n_test_iter):
-        x_spt, y_spt, x_qry, y_qry = db.next('test')
+    for x_spt, y_spt, x_qry, y_qry in db:
+        x_spt, y_spt, x_qry, y_qry = x_spt.squeeze(0).to(device), y_spt.squeeze(0).to(device), \
+                                        x_qry.squeeze(0).to(device), y_qry.squeeze(0).to(device)
 
 
         task_num, setsz, c_, h, w = x_spt.size()
