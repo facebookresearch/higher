@@ -53,7 +53,7 @@ def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
     argparser.add_argument(
-        '--k_spt', type=int, help='k shot for support set', default=5)
+        '--k_spt', type=int, help='k shot for support set', default=1)
     argparser.add_argument(
         '--k_qry', type=int, help='k shot for query set', default=15)
     argparser.add_argument(
