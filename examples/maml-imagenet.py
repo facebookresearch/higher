@@ -108,7 +108,7 @@ def main():
     meta_opt = optim.Adam(net.parameters(), lr=1e-3)
 
     log = []
-    for epoch in range(100):
+    for epoch in range(1000):
         db = DataLoader(mini, args.task_num, shuffle=True, num_workers=1, pin_memory=True)
         train(db, net, device, meta_opt, epoch, log)
         db_test = DataLoader(mini_test, 1, shuffle=True, num_workers=1, pin_memory=True)
