@@ -72,10 +72,10 @@ def main():
     device = torch.device('cuda')
 
     # batchsz here means total episode number
-    mini = MiniImagenet('/tmp/miniimagenet-data', mode='train', n_way=args.n_way, k_shot=args.k_spt,
+    mini = MiniImagenet('/home/jiangshanli/higher/miniimagenet', mode='train', n_way=args.n_way, k_shot=args.k_spt,
                         k_query=args.k_qry,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet('/tmp/miniimagenet-data', mode='test', n_way=args.n_way, k_shot=args.k_spt,
+    mini_test = MiniImagenet('/home/jiangshanli/higher/miniimagenet', mode='test', n_way=args.n_way, k_shot=args.k_spt,
                              k_query=args.k_qry,
                              batchsz=100, resize=84)
 
