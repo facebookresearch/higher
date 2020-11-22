@@ -60,7 +60,7 @@ def main():
         '--task_num',
         type=int,
         help='meta batch size, namely task num',
-        default=32)
+        default=4)
     argparser.add_argument('--seed', type=int, help='random seed', default=1)
     args = argparser.parse_args()
 
@@ -100,7 +100,7 @@ def main():
     #     nn.MaxPool2d(2, 2),
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
-    net = iRevNet([2,2,2], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
+    net = iRevNet([1,1,1,1], [1,2,2,2], args.n_way, nChannels=[24, 96, 384, 1536], init_ds=0,
                  dropout_rate=0.1, affineBN=True, in_shape=[3,84,84], mult=4, use_rev_bw=False).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
@@ -131,7 +131,7 @@ def train(db, net, device, meta_opt, epoch, log):
         # Initialize the inner optimizer to adapt the parameters to
         # the support set.
         n_inner_iter = 5
-        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-1)
+        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-2)
 
         qry_losses = []
         qry_accs = []
