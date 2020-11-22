@@ -53,7 +53,7 @@ def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
     argparser.add_argument(
-        '--k_spt', type=int, help='k shot for support set', default=5)
+        '--k_spt', type=int, help='k shot for support set', default=1)
     argparser.add_argument(
         '--k_qry', type=int, help='k shot for query set', default=15)
     argparser.add_argument(
@@ -100,7 +100,7 @@ def main():
     #     nn.MaxPool2d(2, 2),
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
-    net = iRevNet([1,1,1,1], [1,2,2,2], args.n_way, nChannels=[24, 96, 384, 1536], init_ds=0,
+    net = iRevNet([1,1,1,1], [1,2,2,2], args.n_way, nChannels=[16, 64, 128, 256], init_ds=0,
                  dropout_rate=0.1, affineBN=True, in_shape=[3,84,84], mult=4, use_rev_bw=False).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
