@@ -70,31 +70,14 @@ def main():
 
     # Set up the Omniglot loader.
     device = torch.device('cuda')
-    db = OmniglotNShot(
-        '/tmp/omniglot-data',
-        batchsz=args.task_num,
-        n_way=args.n_way,
-        k_shot=args.k_spt,
-        k_query=args.k_qry,
-        imgsz=28,
-        device=device,
-    )
-
-    db = MiniImagenet('/tmp/miniimagenet-data', 
-                        batchsz=args.task_num, 
-                        n_way=args.n_way, 
-                        k_shot=args.k_spt,
-                        k_query=args.k_qry,
-                        imgsz=28,
-                        device=device)
 
     # batchsz here means total episode number
-    mini = MiniImagenet('/home/i/tmp/MAML-Pytorch/miniimagenet/', mode='train', n_way=args.n_way, k_shot=args.k_spt,
+    mini = MiniImagenet('/tmp/miniimagenet-data', mode='train', n_way=args.n_way, k_shot=args.k_spt,
                         k_query=args.k_qry,
-                        batchsz=10000, resize=args.imgsz)
-    mini_test = MiniImagenet('/home/i/tmp/MAML-Pytorch/miniimagenet/', mode='test', n_way=args.n_way, k_shot=args.k_spt,
+                        batchsz=10000, resize=84)
+    mini_test = MiniImagenet('/tmp/miniimagenet-data', mode='test', n_way=args.n_way, k_shot=args.k_spt,
                              k_query=args.k_qry,
-                             batchsz=100, resize=args.imgsz)
+                             batchsz=100, resize=84)
 
     # Create a vanilla PyTorch neural network that will be
     # automatically monkey-patched by higher later.
