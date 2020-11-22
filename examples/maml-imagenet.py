@@ -47,6 +47,7 @@ import higher
 
 from irevnet.models.iRevNet import iRevNet
 from support.miniimagenet_loaders import MiniImagenet
+from torch.utils.data import DataLoader
 
 def main():
     argparser = argparse.ArgumentParser()
