@@ -75,10 +75,10 @@ def main():
     # batchsz here means total episode number
     mini = MiniImagenet('/home/jiangshanli/higher/miniimagenet', mode='train', n_way=args.n_way, k_shot=args.k_spt,
                         k_query=args.k_qry,
-                        batchsz=10000, resize=84)
+                        batchsz=10000, resize=88)
     mini_test = MiniImagenet('/home/jiangshanli/higher/miniimagenet', mode='test', n_way=args.n_way, k_shot=args.k_spt,
                              k_query=args.k_qry,
-                             batchsz=100, resize=84)
+                             batchsz=100, resize=88)
 
     # Create a vanilla PyTorch neural network that will be
     # automatically monkey-patched by higher later.
@@ -100,8 +100,8 @@ def main():
     #     nn.MaxPool2d(2, 2),
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
-    net = iRevNet([2,2,2,2], [1,2,2,3], args.n_way, nChannels=[8, 32, 128, 1152], init_ds=0,
-                 dropout_rate=0.1, affineBN=True, in_shape=[3,84,84], mult=4, use_rev_bw=False).to(device)
+    net = iRevNet([2,2,2,2], [1,2,2,2], args.n_way, nChannels=[16, 64, 256, 1024], init_ds=0,
+                 dropout_rate=0.1, affineBN=True, in_shape=[3,88,88], mult=4, use_rev_bw=False).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
     # to be adapted.
