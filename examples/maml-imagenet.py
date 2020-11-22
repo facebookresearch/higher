@@ -100,8 +100,8 @@ def main():
     #     nn.MaxPool2d(2, 2),
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
-    net = iRevNet([1,1,1], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
-                 dropout_rate=0.1, affineBN=True, in_shape=[3,28,28], mult=4, use_rev_bw=False).to(device)
+    net = iRevNet([1,1,1], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=2,
+                 dropout_rate=0.1, affineBN=True, in_shape=[3,84,84], mult=4, use_rev_bw=False).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
     # to be adapted.
@@ -201,7 +201,7 @@ def test(db, net, device, epoch, log):
 
     for x_spt, y_spt, x_qry, y_qry in db:
         x_spt, y_spt, x_qry, y_qry = x_spt.squeeze(0).to(device), y_spt.squeeze(0).to(device), \
-                                        x_qry.squeeze(0).to(device), y_qry.squeeze(0).to(device)
+                                            x_qry.squeeze(0).to(device), y_qry.squeeze(0).to(device)
 
 
         task_num, setsz, c_, h, w = x_spt.size()
