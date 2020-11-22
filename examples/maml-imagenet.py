@@ -131,7 +131,7 @@ def train(db, net, device, meta_opt, epoch, log):
         # Initialize the inner optimizer to adapt the parameters to
         # the support set.
         n_inner_iter = 5
-        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-2)
+        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-1)
 
         qry_losses = []
         qry_accs = []
