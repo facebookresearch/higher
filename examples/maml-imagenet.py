@@ -100,7 +100,7 @@ def main():
     #     nn.MaxPool2d(2, 2),
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
-    net = iRevNet([1,1,1], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
+    net = iRevNet([2,2,2], [2,2,2], args.n_way, nChannels=[16,64,256], init_ds=2,
                  dropout_rate=0.1, affineBN=True, in_shape=[3,84,84], mult=4, use_rev_bw=False).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
@@ -171,7 +171,7 @@ def train(db, net, device, meta_opt, epoch, log):
         meta_opt.step()
         qry_losses = sum(qry_losses) / task_num
         qry_accs = 100. * sum(qry_accs) / task_num
-        i = epoch + float(batch_idx) / n_train_iter
+        i = epoch + float(batch_idx) / 500
         iter_time = time.time() - start_time
         if batch_idx % 4 == 0:
             print(
@@ -194,8 +194,6 @@ def test(db, net, device, epoch, log):
     # stage of fine-tuning here that should be added if you are
     # adapting this code for research.
     net.train()
-    n_test_iter = db.x_test.shape[0] // db.batchsz
-
     qry_losses = []
     qry_accs = []
 
