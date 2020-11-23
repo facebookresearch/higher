@@ -119,6 +119,8 @@ def main():
 def train(db, net, device, meta_opt, epoch, log):
     net.train()
     for batch_idx, (x_spt, y_spt, x_qry, y_qry) in enumerate(db):
+        if batch_idx == 8:
+            break
         start_time = time.time()
         x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), x_qry.to(device), y_qry.to(device)
         # Sample a batch of support and query images and labels.
