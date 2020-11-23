@@ -200,8 +200,8 @@ def test(db, net, device, epoch, log):
     qry_accs = []
 
     for x_spt, y_spt, x_qry, y_qry in db:
-        x_spt, y_spt, x_qry, y_qry = x_spt.squeeze(0).to(device), y_spt.squeeze(0).to(device), \
-                                            x_qry.squeeze(0).to(device), y_qry.squeeze(0).to(device)
+        x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), \
+                                            x_qry.to(device), y_qry.to(device)
 
 
         task_num, setsz, c_, h, w = x_spt.size()
