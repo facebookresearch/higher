@@ -171,9 +171,9 @@ def train(db, net, device, meta_opt, epoch, log):
         meta_opt.step()
         qry_losses = sum(qry_losses) / task_num
         qry_accs = 100. * sum(qry_accs) / task_num
-        i = epoch + float(batch_idx) / (500. / task_num)
+        i = epoch + float(batch_idx) / (10000. / task_num)
         iter_time = time.time() - start_time
-        if batch_idx % 25 == 0:
+        if batch_idx % 4 == 0:
             print(
                 f'[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}'
             )
