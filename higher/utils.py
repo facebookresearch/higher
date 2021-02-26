@@ -45,6 +45,21 @@ def _recursive_copy_and_cast(
             return x
     return _recursive_map(target, map_fn)
 
+def _recursive_detach(
+        target: _typing.Union[list, tuple, dict, set,float,_torch.Tensor]
+    ) -> _typing.Union[list, tuple, dict, set,float,_torch.Tensor]:
+    if isinstance(target, _torch.Tensor):
+        target = target.detach()
+        return target
+    elif isinstance(target,dict):
+        return {k:_recursive_detach(v) for k,v in target.items()}
+    elif isinstance(target,list):
+        return [_recursive_detach(v) for v in target]
+    elif isinstance(target,tuple):
+        return tuple(_recursive_detach(v) for v in target)
+    else:
+        return target
+
 
 def _recursive_map(
     target: _typing.Union[list, tuple, dict, set, _T],
