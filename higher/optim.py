@@ -31,7 +31,7 @@ _StateType = _typing.List[_typing.DefaultDict[int, _typing.Any]]
 _GradClosureType = _typing.Callable[[_torch.Tensor], _torch.Tensor]
 _OverrideType = _typing.Dict[str, _typing.List[_typing.Any]]
 _GradCallbackType = _typing.Callable[[_typing.List[_torch.Tensor]],
-                                      _typing.List[_torch.Tensor]]
+                                     _typing.List[_torch.Tensor]]
 
 
 def _get_mask_closure(mask: _torch.Tensor) -> _GradClosureType:
@@ -376,6 +376,84 @@ class DifferentiableAdam(DifferentiableOptimizer):
                 )
 
 
+class DifferentiableAdamW(DifferentiableOptimizer):
+    r"""A differentiable version of the AdamW optimizer.
+
+        This optimizer creates a gradient tape as it updates parameters."""
+
+    def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
+
+        zipped = zip(self.param_groups, grouped_grads)
+        for group_idx, (group, grads) in enumerate(zipped):
+            amsgrad = group['amsgrad']
+            beta1, beta2 = group['betas']
+
+            for p_idx, (p, g) in enumerate(zip(group['params'], grads)):
+
+                if g is None:
+                    continue
+
+                # Perform stepweight decay
+                p = p * (1 - group['lr'] * group['weight_decay'])
+
+                if g.is_sparse:
+                    raise RuntimeError(
+                        'AdamW does not support sparse gradients')
+
+                state = self.state[group_idx][p_idx]
+
+                # State initialization
+                if len(state) == 0:
+                    state['step'] = 0
+                    # Exponential moving average of gradient values
+                    state['exp_avg'] = _torch.zeros_like(p.data)
+                    # Exponential moving average of squared gradient values
+                    state['exp_avg_sq'] = _torch.zeros_like(p.data)
+                    if amsgrad:
+                        # Maintains max of all exp. mov. avg. of sq. grad. vals
+                        state['max_exp_avg_sq'] = _torch.zeros_like(p.data)
+
+                exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
+                if amsgrad:
+                    max_exp_avg_sq = state['max_exp_avg_sq']
+
+                state['step'] += 1
+                bias_correction1 = 1 - beta1**state['step']
+                bias_correction2 = 1 - beta2**state['step']
+
+                # Decay the first and second moment running average coefficient
+                state['exp_avg'] = exp_avg = (exp_avg * beta1) + (1 - beta1) * g
+                state['exp_avg_sq'] = exp_avg_sq = (
+                    (exp_avg_sq * beta2) + (1 - beta2) * g * g
+                )
+
+                # Deal with stability issues
+                mask = exp_avg_sq == 0.
+                _maybe_mask(exp_avg_sq, mask)
+
+                if amsgrad:
+                    # Maintains the max of all 2nd moment running avg. till now
+                    state['max_exp_avg_sq'] = max_exp_avg_sq = _torch.max(
+                        max_exp_avg_sq, exp_avg_sq
+                    )
+                    # Use the max. for normalizing running avg. of gradient
+                    denom = _add(
+                        max_exp_avg_sq.sqrt() / _math.sqrt(bias_correction2),
+                        group['eps']
+                    )
+                else:
+                    denom = _add(
+                        exp_avg_sq.sqrt() / _math.sqrt(bias_correction2),
+                        group['eps']
+                    )
+
+                step_size = group['lr'] / bias_correction1
+
+                group['params'][p_idx] = _addcdiv(
+                    p, -step_size, exp_avg, denom
+                )
+
+
 class DifferentiableAdadelta(DifferentiableOptimizer):
     r"""A differentiable version of the Adadelta optimizer.
 
@@ -562,9 +640,9 @@ class DifferentiableASGD(DifferentiableOptimizer):
                 # update eta and mu
                 state['eta'] = (
                     group['lr'] / _math.pow(
-                        (1 + group['lambd'] * group['lr'] * state['step']),
-                        group['alpha']
-                    )
+                    (1 + group['lambd'] * group['lr'] * state['step']),
+                    group['alpha']
+                    )   
                 )
                 state['mu'] = 1 / max(1, state['step'] - group['t0'])
 
@@ -706,12 +784,12 @@ class DifferentiableRprop(DifferentiableOptimizer):
                 state['prev'] = g.clone()
 
 
-_OptMappingType = _typing.Dict[_torch.optim.Optimizer, _typing.
-                               Type[DifferentiableOptimizer]]
+_OptMappingType = _typing.Dict[_torch.optim.Optimizer, _typing.Type[DifferentiableOptimizer]]
 _opt_mapping: _OptMappingType = {
     _torch.optim.Adadelta: DifferentiableAdadelta,
     _torch.optim.Adagrad: DifferentiableAdagrad,
     _torch.optim.Adam: DifferentiableAdam,
+    _torch.optim.AdamW: DifferentiableAdamW,
     _torch.optim.Adamax: DifferentiableAdamax,
     _torch.optim.ASGD: DifferentiableASGD,
     _torch.optim.RMSprop: DifferentiableRMSprop,
@@ -788,14 +866,14 @@ def get_diff_optim(
 
 
 def create_diff_optim(
-    opt_type: _typing.Type[_torch.optim.Optimizer],
-    opt_kwargs: _typing.Optional[_typing.Dict[str, _typing.Any]] = None,
-    params: _typing.Optional[_typing.List[_torch.Tensor]] = None,
-    fmodel: _typing.Optional[_patch._MonkeyPatchBase] = None,
-    device: _typing.Optional[_torch.device] = None,
-    override: _typing.Optional[_OverrideType] = None,
-    track_higher_grads: bool = True,
-    **kwargs
+        opt_type: _typing.Type[_torch.optim.Optimizer],
+        opt_kwargs: _typing.Optional[_typing.Dict[str, _typing.Any]] = None,
+        params: _typing.Optional[_typing.List[_torch.Tensor]] = None,
+        fmodel: _typing.Optional[_patch._MonkeyPatchBase] = None,
+        device: _typing.Optional[_torch.device] = None,
+        override: _typing.Optional[_OverrideType] = None,
+        track_higher_grads: bool = True,
+        **kwargs
 ) -> DifferentiableOptimizer:
     r"""Construct a differentiable version of an new optimizer.
 
@@ -850,9 +928,9 @@ def create_diff_optim(
             if isinstance(params[0], dict):
                 dummy = [
                     {
-                        k: _torch.zeros_like(v, requires_grad=True)
-                        if k == "params" else v
-                        for k, v in group.items()
+                    k: _torch.zeros_like(v, requires_grad=True)
+                    if k == "params" else v
+                    for k, v in group.items()
                     } for group in params
                 ]
             else:
@@ -887,8 +965,8 @@ def create_diff_optim(
 
 
 def register_optim(
-    optim_type: _torch.optim.Optimizer,
-    diff_optim_type: _typing.Type[DifferentiableOptimizer]
+        optim_type: _torch.optim.Optimizer,
+        diff_optim_type: _typing.Type[DifferentiableOptimizer]
 ) -> None:
     r"""Registers a new optimizer type for use with higher functions.
 
@@ -903,7 +981,7 @@ def register_optim(
 
 
 def get_trainable_opt_params(
-    opt: _torch.optim.Optimizer, device: _typing.Optional[_torch.device] = None
+        opt: _torch.optim.Optimizer, device: _typing.Optional[_torch.device] = None
 ) -> _OverrideType:
     r"""Get an override dictionary from an optimizer instance.
 
@@ -937,8 +1015,8 @@ def get_trainable_opt_params(
             # Ignore hyperparameters that aren't structures containing ints
             # or floats
             if all(
-                isinstance(x, int) or isinstance(x, float)
-                for x in _utils.flatten(v)
+                    isinstance(x, int) or isinstance(x, float)
+                    for x in _utils.flatten(v)
             ):
                 override[k].append(_utils._recursive_map(v, map_fn))
 
@@ -1052,7 +1130,7 @@ def _recursive_apply(
     elif isinstance(replacement, dict) and isinstance(target, dict):
         return type(target)(
             {k: _recursive_apply(r, t)
-             for (_, r), (k, t) in zip(replacement.items(), target.items())}
+            for (_, r), (k, t) in zip(replacement.items(), target.items())}
         )
     elif isinstance(target, set):
         return type(target)(
