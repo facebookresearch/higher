@@ -112,6 +112,8 @@ with higher.innerloop_ctx(model, opt) as (fmodel, diffopt):
 **Beware** that when unrolling your optimisation like this for `k`, all gradients and all activations of your model at each step is kept in memory,
 meaning the memory footprint of your model is `k` times greater.
 
+For more complete examples, please look at [examples](examples).
+
 # Adding your own optimizers
 
 It is possible to use optimizers other that those found in `torch.optim`. A differentiable version must be implemented first. This can be done by subclassing `higher.optim.DifferentiableOptimizer` and overriding the `_update` method, following the arguments of the original. Assuming the logic of the optimizer being added follows the logic of those found in `torch.optim`, the steps to follow are more or less:
