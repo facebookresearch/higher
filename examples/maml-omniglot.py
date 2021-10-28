@@ -184,11 +184,6 @@ def train(db, net, device, meta_opt, epoch, log):
 
 
 def test(db, net, device, epoch, log):
-    # Crucially in our testing procedure here, we do *not* fine-tune
-    # the model during testing for simplicity.
-    # Most research papers using MAML for this task do an extra
-    # stage of fine-tuning here that should be added if you are
-    # adapting this code for research.
     net.train()
     n_test_iter = db.x_test.shape[0] // db.batchsz
 
