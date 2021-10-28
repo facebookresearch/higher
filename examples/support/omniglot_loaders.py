@@ -186,6 +186,9 @@ class OmniglotNShot:
             print('load from omniglot.npy.')
 
         # [1623, 20, 84, 84, 1]
+        ####!! repeat across channel
+        print('data shape: ', self.x.shape)
+        self.x = np.repeat(self.x, 3, axis=2)
         # TODO: can not shuffle here, we must keep training and test set distinct!
         self.x_train, self.x_test = self.x[:1200], self.x[1200:]
 
@@ -200,6 +203,7 @@ class OmniglotNShot:
 
         # save pointer of current read batch in total cache
         self.indexes = {"train": 0, "test": 0}
+
         self.datasets = {"train": self.x_train, "test": self.x_test}  # original data cached
         print("DB: train", self.x_train.shape, "test", self.x_test.shape)
 
@@ -257,10 +261,10 @@ class OmniglotNShot:
 
                 # shuffle inside a batch
                 perm = np.random.permutation(self.n_way * self.k_shot)
-                x_spt = np.array(x_spt).reshape(self.n_way * self.k_shot, 1, self.resize, self.resize)[perm]
+                x_spt = np.array(x_spt).reshape(self.n_way * self.k_shot, 3, self.resize, self.resize)[perm]
                 y_spt = np.array(y_spt).reshape(self.n_way * self.k_shot)[perm]
                 perm = np.random.permutation(self.n_way * self.k_query)
-                x_qry = np.array(x_qry).reshape(self.n_way * self.k_query, 1, self.resize, self.resize)[perm]
+                x_qry = np.array(x_qry).reshape(self.n_way * self.k_query, 3, self.resize, self.resize)[perm]
                 y_qry = np.array(y_qry).reshape(self.n_way * self.k_query)[perm]
 
                 # append [sptsz, 1, 84, 84] => [b, setsz, 1, 84, 84]
@@ -271,10 +275,10 @@ class OmniglotNShot:
 
 
             # [b, setsz, 1, 84, 84]
-            x_spts = np.array(x_spts).astype(np.float32).reshape(self.batchsz, setsz, 1, self.resize, self.resize)
+            x_spts = np.array(x_spts).astype(np.float32).reshape(self.batchsz, setsz, 3, self.resize, self.resize)
             y_spts = np.array(y_spts).astype(np.int).reshape(self.batchsz, setsz)
             # [b, qrysz, 1, 84, 84]
-            x_qrys = np.array(x_qrys).astype(np.float32).reshape(self.batchsz, querysz, 1, self.resize, self.resize)
+            x_qrys = np.array(x_qrys).astype(np.float32).reshape(self.batchsz, querysz, 3, self.resize, self.resize)
             y_qrys = np.array(y_qrys).astype(np.int).reshape(self.batchsz, querysz)
 
             x_spts, y_spts, x_qrys, y_qrys = [

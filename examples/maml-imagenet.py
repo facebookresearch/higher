@@ -45,9 +45,9 @@ import torch.optim as optim
 
 import higher
 
-from support.omniglot_loaders import OmniglotNShot
 from irevnet.models.iRevNet import iRevNet
-
+from support.miniimagenet_loaders import MiniImagenet
+from torch.utils.data import DataLoader
 
 def main():
     argparser = argparse.ArgumentParser()
@@ -60,7 +60,7 @@ def main():
         '--task_num',
         type=int,
         help='meta batch size, namely task num',
-        default=32)
+        default=4)
     argparser.add_argument('--seed', type=int, help='random seed', default=1)
     args = argparser.parse_args()
 
@@ -71,15 +71,14 @@ def main():
 
     # Set up the Omniglot loader.
     device = torch.device('cuda')
-    db = OmniglotNShot(
-        '/tmp/omniglot-data',
-        batchsz=args.task_num,
-        n_way=args.n_way,
-        k_shot=args.k_spt,
-        k_query=args.k_qry,
-        imgsz=28,
-        device=device,
-    )
+
+    # batchsz here means total episode number
+    mini = MiniImagenet('/home/jiangshanli/higher/miniimagenet', mode='train', n_way=args.n_way, k_shot=args.k_spt,
+                        k_query=args.k_qry,
+                        batchsz=10000, resize=88)
+    mini_test = MiniImagenet('/home/jiangshanli/higher/miniimagenet', mode='test', n_way=args.n_way, k_shot=args.k_spt,
+                             k_query=args.k_qry,
+                             batchsz=100, resize=88)
 
     # Create a vanilla PyTorch neural network that will be
     # automatically monkey-patched by higher later.
@@ -101,29 +100,28 @@ def main():
     #     nn.MaxPool2d(2, 2),
     #     Flatten(),
     #     nn.Linear(64, args.n_way)).to(device)
-    net = iRevNet([1,1,1], [1,2,2], args.n_way, nChannels=[16,64,256], init_ds=0,
-                 dropout_rate=0.1, affineBN=True, in_shape=[3,28,28], mult=4, use_rev_bw=True).to(device)
+    net = iRevNet([2,2,2,2], [1,2,2,2], args.n_way, nChannels=[16, 64, 256, 1024], init_ds=0,
+                 dropout_rate=0.1, affineBN=True, in_shape=[3,88,88], mult=4, use_rev_bw=False).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
     # to be adapted.
     meta_opt = optim.Adam(net.parameters(), lr=1e-3)
 
     log = []
-    for epoch in range(100):
+    for epoch in range(1000):
+        db = DataLoader(mini, args.task_num, shuffle=True, num_workers=1, pin_memory=True)
         train(db, net, device, meta_opt, epoch, log)
-        test(db, net, device, epoch, log)
+        db_test = DataLoader(mini_test, 1, shuffle=True, num_workers=1, pin_memory=True)
+        test(db_test, net, device, epoch, log)
         plot(log)
 
 
 def train(db, net, device, meta_opt, epoch, log):
     net.train()
-    n_train_iter = db.x_train.shape[0] // db.batchsz
-
-    for batch_idx in range(n_train_iter):
+    for batch_idx, (x_spt, y_spt, x_qry, y_qry) in enumerate(db):
         start_time = time.time()
+        x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), x_qry.to(device), y_qry.to(device)
         # Sample a batch of support and query images and labels.
-        x_spt, y_spt, x_qry, y_qry = db.next()
-
         task_num, setsz, c_, h, w = x_spt.size()
         querysz = x_qry.size(1)
 
@@ -173,7 +171,7 @@ def train(db, net, device, meta_opt, epoch, log):
         meta_opt.step()
         qry_losses = sum(qry_losses) / task_num
         qry_accs = 100. * sum(qry_accs) / task_num
-        i = epoch + float(batch_idx) / n_train_iter
+        i = epoch + float(batch_idx) / (10000. / task_num)
         iter_time = time.time() - start_time
         if batch_idx % 4 == 0:
             print(
@@ -196,13 +194,12 @@ def test(db, net, device, epoch, log):
     # stage of fine-tuning here that should be added if you are
     # adapting this code for research.
     net.train()
-    n_test_iter = db.x_test.shape[0] // db.batchsz
-
     qry_losses = []
     qry_accs = []
 
-    for batch_idx in range(n_test_iter):
-        x_spt, y_spt, x_qry, y_qry = db.next('test')
+    for x_spt, y_spt, x_qry, y_qry in db:
+        x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), \
+                                            x_qry.to(device), y_qry.to(device)
 
 
         task_num, setsz, c_, h, w = x_spt.size()
@@ -261,7 +258,7 @@ def plot(log):
     ax.plot(test_df['epoch'], test_df['acc'], label='Test')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Accuracy')
-    ax.set_ylim(70, 100)
+    ax.set_ylim(0, 100)
     fig.legend(ncol=2, loc='lower right')
     fig.tight_layout()
     fname = 'maml-accs.png'
