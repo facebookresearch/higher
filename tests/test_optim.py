@@ -549,6 +549,76 @@ class TestOptim(unittest.TestCase):
         lambda self: self._model,
         optim.Adam,
     )])
+    def testDiffOptStateDict(
+        self, _, model_builder, opt_builder, kwargs=None
+    ):
+        kwargs = {} if kwargs is None else kwargs
+
+        # Making different copied of our model for comparison
+        model_1 = model_builder(self)
+        model_2 = copy.deepcopy(model_1)
+
+        model_3 = copy.deepcopy(model_1)
+        model_4 = copy.deepcopy(model_1)
+
+        lr = 0.1
+
+        opt_1 = opt_builder(model_1.parameters(), lr=lr, **kwargs)
+        opt_2 = opt_builder(model_2.parameters(), lr=lr, **kwargs)
+        opt_3 = opt_builder(model_3.parameters(), lr=lr, **kwargs)
+        opt_4 = opt_builder(model_4.parameters(), lr=lr, **kwargs)
+
+        test = torch.rand(3,4)
+
+        # Testing to see that the same learning process occurs using
+        # diffopt from higher as it does from using the torch.optim optimizer
+        for i in range(3):
+            with higher.innerloop_ctx(model_1,opt_1) as (fmodel,diffopt):
+                for j in range(3):
+                    x = torch.rand(10, 4)
+                    diffopt.step(fmodel(x).pow(2).sum())
+
+                    opt_2.zero_grad()
+                    model_2(x).pow(2).sum().backward()
+                    opt_2.step()
+
+            opt_1.load_state_dict(diffopt.state_dict())
+            model_1.load_state_dict(fmodel.state_dict())
+
+            with higher.innerloop_ctx(model_3,opt_3) as (fmodel,diffopt):
+                for j in range(3):
+                    x = torch.rand(10, 4)
+                    diffopt.step(fmodel(x).pow(2).sum())
+
+                    opt_4.zero_grad()
+                    model_4(x).pow(2).sum().backward()
+                    opt_4.step()
+
+            #opt_3.load_state_dict(diffopt.state_dict())
+            model_3.load_state_dict(fmodel.state_dict())
+                                
+        x = torch.rand(10,4)
+        self.assertTrue(
+            torch.all(
+                torch.isclose(
+                    model_1(x),model_2(x)
+                )
+            )
+        )
+        self.assertFalse(
+            torch.all(
+                torch.isclose(
+                    model_3(x),model_4(x)
+                )
+            )
+        )
+
+
+    @parameterized.expand([(
+        "simple_model_adam",
+        lambda self: self._model,
+        optim.Adam,
+    )])
     def testDiffOptCallback(
         self, _, model_builder, opt_builder, kwargs=None
     ):

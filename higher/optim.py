@@ -261,6 +261,36 @@ class DifferentiableOptimizer(_abc.ABC):
 
         return new_params
 
+    def state_dict(self) -> _typing.Dict[str,_typing.Any]:
+        param_mappings = {}
+        start_index = 0
+
+        def pack_group(group):
+            nonlocal start_index
+            packed = {k: v for k, v in group.items() if k != 'params'}
+            param_mappings.update({id(p): i for i, p in enumerate(group['params'], start_index)
+                                                          if id(p) not in param_mappings})
+            packed['params'] = [param_mappings[id(p)] for p in group['params']]
+            start_index += len(packed['params'])
+            return packed
+
+        res = _collections.defaultdict(dict)
+
+        param_groups = [pack_group(g) for g in self.param_groups]
+        for group_idx, group in enumerate(self.param_groups):
+            for p_idx, p in enumerate(group['params']):
+                res[p] = {
+                    k:v for k,v in self.state[group_idx][p_idx].items()
+                }
+
+        packed_state = {(param_mappings[id(k)] if isinstance(k, _torch.Tensor) else k): _utils._recursive_detach(v)
+                                                      for k, v in res.items()}
+        return {
+            'state':packed_state,
+            'param_groups':param_groups
+        }
+
+
     @_abc.abstractmethod
     def _update(self, grouped_grads: _GroupedGradsType, **kwargs) -> None:
         pass
