@@ -189,7 +189,7 @@ def test(db, net, device, epoch, log):
     # Most research papers using MAML for this task do an extra
     # stage of fine-tuning here that should be added if you are
     # adapting this code for research.
-    net.train()
+    net.eval()
     n_test_iter = db.x_test.shape[0] // db.batchsz
 
     qry_losses = []
