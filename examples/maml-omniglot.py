@@ -45,6 +45,8 @@ import torch.optim as optim
 
 import higher
 
+from transformers import Adafactor
+
 from support.omniglot_loaders import OmniglotNShot
 
 
@@ -103,7 +105,9 @@ def main():
 
     # We will use Adam to (meta-)optimize the initial parameters
     # to be adapted.
-    meta_opt = optim.Adam(net.parameters(), lr=1e-3)
+    # meta_opt = optim.Adam(net.parameters(), lr=1e-3)
+    meta_opt = Adafactor(net.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
+    # scheduler = AdafactorSchedule(meta_opt)
 
     log = []
     for epoch in range(100):
