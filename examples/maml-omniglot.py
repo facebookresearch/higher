@@ -45,8 +45,13 @@ import torch.optim as optim
 
 import higher
 
+from transformers import Adafactor
+
+# from meta_learning.base_models.resnet_rfs import resnet12, resnet18
+
 from support.omniglot_loaders import OmniglotNShot
 
+device = torch.device(f"cuda:{gpu_idx}" if torch.cuda.is_available() else "cpu")
 
 def main():
     argparser = argparse.ArgumentParser()
@@ -69,7 +74,7 @@ def main():
     np.random.seed(args.seed)
 
     # Set up the Omniglot loader.
-    device = torch.device('cuda')
+    # device = torch.device('cuda')
     db = OmniglotNShot(
         '/tmp/omniglot-data',
         batchsz=args.task_num,
@@ -100,10 +105,13 @@ def main():
         nn.MaxPool2d(2, 2),
         Flatten(),
         nn.Linear(64, args.n_way)).to(device)
+    # net = resnet12(avg_pool=True, drop_rate=0.1, dropblock_size=5, num_classes=args.n_classes).to(device)
 
     # We will use Adam to (meta-)optimize the initial parameters
     # to be adapted.
-    meta_opt = optim.Adam(net.parameters(), lr=1e-3)
+    # meta_opt = optim.Adam(net.parameters(), lr=1e-3)
+    meta_opt = Adafactor(net.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
+    # scheduler = AdafactorSchedule(meta_opt)
 
     log = []
     for epoch in range(100):
@@ -189,7 +197,7 @@ def test(db, net, device, epoch, log):
     # Most research papers using MAML for this task do an extra
     # stage of fine-tuning here that should be added if you are
     # adapting this code for research.
-    net.train()
+    net.eval()
     n_test_iter = db.x_test.shape[0] // db.batchsz
 
     qry_losses = []
