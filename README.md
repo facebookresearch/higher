@@ -170,7 +170,7 @@ The following papers and codebases reference or directly use `higher`:
 * [Holla, Nithin, et al. "Learning to Learn to Disambiguate: Meta-Learning for Few-Shot Word Sense Disambiguation." (2020)](https://arxiv.org/abs/2004.14355)
 * [De Angeli, Nicola. "State of the Art on: Meta-learning for Few-Shot Classification." (2020)](https://pdfs.semanticscholar.org/8ec2/a4f069a1b73a5a91be6a43d6e1af028b8ca1.pdf)
 * [Zhou, Allan, Tom Knowles, and Chelsea Finn. "Meta-Learning Symmetries by Reparameterization." (2020)](https://arxiv.org/abs/2007.02933)
-
+* [Durmus Alp Emre Acar, Ruizhao Zhu, Venkatesh Saligrama. "Memory Efficient Online Meta Learning" (2021)](http://proceedings.mlr.press/v139/acar21b/acar21b.pdf)
 Is yours missing? Raise an [issue](https://github.com/facebookresearch/higher/issues/new) or add it via a [pull request](https://github.com/facebookresearch/higher/compare)!
 
 # Release Notes
