@@ -98,7 +98,8 @@ class DifferentiableOptimizer(_abc.ABC):
         reference_params = list(reference_params)
 
         # Copy param groups and set up structures for copy state
-        self.param_groups = _copy.deepcopy(other.param_groups)
+        self.param_groups = [{'params': _copy.deepcopy(param_group['params'])}
+                              for param_group in other.param_groups]
         self._group_to_param_list: _typing.List[_typing.List[int]] = []
         self.state: _StateType = [
             _collections.defaultdict(dict)
@@ -130,6 +131,9 @@ class DifferentiableOptimizer(_abc.ABC):
                 local_list.append(index)
             group['params'] = [None] * len(group['params'])
             self._group_to_param_list.append(local_list)
+            for key, val in orig_group.items():
+              if key != 'params':
+                group[key] = val
 
         self._fmodel = fmodel
         self._track_higher_grads = track_higher_grads
@@ -642,7 +646,7 @@ class DifferentiableASGD(DifferentiableOptimizer):
                     group['lr'] / _math.pow(
                     (1 + group['lambd'] * group['lr'] * state['step']),
                     group['alpha']
-                    )   
+                    )
                 )
                 state['mu'] = 1 / max(1, state['step'] - group['t0'])
 
@@ -1043,7 +1047,7 @@ def apply_trainable_opt_params(
                 "parameter groups.".format(k)
             )
         for group_idx, group in enumerate(opt.param_groups):
-            replacement = v[0] if len(v) is 1 else v[group_idx]
+            replacement = v[0] if len(v) == 1 else v[group_idx]
             group[k] = _recursive_apply(replacement, group[k])
 
 
